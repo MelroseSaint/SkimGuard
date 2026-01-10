@@ -1,21 +1,29 @@
 export enum DetectionStatus {
   PENDING = 'PENDING',
   CONFIRMED = 'CONFIRMED',
-  REJECTED = 'REJECTED',
+  CLEARED = 'CLEARED',
   PUBLISHED = 'PUBLISHED',
+}
+
+export interface InspectionChecklist {
+  looseParts: boolean;
+  mismatchedColors: boolean;
+  hiddenCamera: boolean;
+  keypadObstruction: boolean;
+  bluetoothSignal: boolean;
 }
 
 export interface AnalysisResult {
   isSuspicious: boolean;
   riskScore: number; // 0-100
-  details: string[];
-  deviceType: 'ATM' | 'POS' | 'Other' | 'Unknown';
+  checklist: InspectionChecklist;
+  detectedDevices?: string[]; // Bluetooth device names
 }
 
 export interface DetectionRecord {
   id: string;
   timestamp: number;
-  imageData: string; // Base64
+  imageData: string; // Base64 snapshot
   location?: {
     latitude: number;
     longitude: number;

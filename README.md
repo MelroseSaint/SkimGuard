@@ -1,20 +1,73 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# 🛡️ SkimGuard (Pro Tool)
 
-# Run and deploy your AI Studio app
+**SkimGuard** is a professional manual inspection utility designed to help users identify ATM and Point-of-Sale (POS) skimmers. 
 
-This contains everything you need to run your app locally.
+Unlike "magic" detector apps, SkimGuard provides a rigorous **Physical Inspection Protocol** supported by real-time hardware tools (Camera Zoom, Flashlight, Bluetooth Scanning) to assist in verified detection.
 
-View your app in AI Studio: https://ai.studio/apps/drive/1bb1UW6EPDIUsgpqDV1SXRv7bCyQBO35Z
+## ✨ Features
 
-## Run Locally
+- **🔦 Hardware-Assisted Inspection**: 
+  - **High-Intensity Flashlight**: Toggle device torch to inspect dark slots.
+  - **Digital Zoom**: Magnify suspicious gaps or glue residue.
+- **📡 Bluetooth Skimmer Scan**: 
+  - Uses the **Web Bluetooth API** to scan for suspicious Low Energy (BLE) devices often used by cheap skimmer modules (e.g., HC-05).
+- **📝 Structured Protocol**: 
+  - Guides the user through a security checklist (Wiggle test, alignment check, hidden camera search).
+- **📊 Deterministic Risk Engine**: 
+  - Calculates risk scores based on verified physical evidence, not AI guesses.
+- **🔒 Local-First**: 
+  - All reports and images are encrypted and stored locally on your device.
 
-**Prerequisites:**  Node.js
+## 🛠️ Tech Stack
 
+- **Frontend**: React 19, TypeScript, Next.js (Concepts)
+- **Hardware Access**: MediaDevices API (Camera/Torch), Web Bluetooth API
+- **Storage**: IndexedDB
+- **UI**: Tailwind CSS
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+## 🚀 Getting Started
+
+### Prerequisites
+- A device with a camera and flash.
+- A browser that supports **Web Bluetooth** (Chrome on Android/Desktop, Edge, Bluefy on iOS) is required for the signal scanner feature.
+
+### Installation
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/MelroseSaint/SkimmerDetection.git
+   cd SkimmerDetection
+   ```
+
+2. **Running the App**
+   Serve the files using a secure context (HTTPS or localhost). Web Bluetooth and Camera require secure contexts.
+
+   Using Python:
+   ```bash
+   python3 -m http.server 8000
+   ```
+
+3. **Access the App**
+   Open `http://localhost:8000`.
+
+## 📖 How to Use
+
+1. **Start Inspection**: Open the scanner.
+2. **Visual Check**: 
+   - Use the **Flashlight** icon to illuminate the card slot.
+   - Use the **Zoom Slider** to check for glue or misalignment.
+3. **Signal Check**: 
+   - Tap **SCAN BLE** to search for nearby unknown Bluetooth devices.
+4. **Physical Check**: 
+   - Follow the on-screen checklist. 
+   - Wiggle the reader. Check the keypad.
+   - Mark any issues found.
+5. **Report**: Save the inspection. The app will calculate a risk score based on your findings.
+
+## ⚠️ Disclaimer
+
+This tool aids in detection but cannot guarantee safety. Sophisticated "deep insert" skimmers may not be visible or transmit Bluetooth signals. Always monitor your bank statements.
+
+## 📄 License
+
+MIT License.
