@@ -1,0 +1,7 @@
+{
+  "name": "SkimGuard",
+  "description": "A PWA for real-time ATM/POS skimmer detection using AI analysis, featuring local-first storage and a trust authority layer.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
