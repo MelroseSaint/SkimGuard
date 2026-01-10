@@ -50,14 +50,13 @@ const Scanner: React.FC = () => {
 
       // Check capabilities
       const track = stream.getVideoTracks()[0];
-      const capabilities = track.getCapabilities();
+      const capabilities = track.getCapabilities() as any; // Cast to any to access non-standard props like torch/zoom safely
       
       if ('torch' in capabilities) {
         setHasFlash(true);
       }
       if ('zoom' in capabilities) {
-        const zoomCapability = (capabilities as any).zoom;
-        setMaxZoom(zoomCapability?.max || 1);
+        setMaxZoom(capabilities.zoom?.max || 1);
       }
 
     } catch (err) {
