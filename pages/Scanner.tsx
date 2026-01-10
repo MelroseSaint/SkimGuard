@@ -181,7 +181,6 @@ const Scanner: React.FC = () => {
     if (isInspecting) {
       renderLoop();
       const interval = setInterval(() => {
-         // Fix: remove unused 'prev' argument
          setOverlayThickness(() => Math.max(0, 0.4 + (Math.random() * 0.1 - 0.05)));
       }, 500);
       return () => {
@@ -198,6 +197,13 @@ const Scanner: React.FC = () => {
         stopBluetoothWatch();
     };
   }, []);
+
+  // Re-attach stream when switching views
+  useEffect(() => {
+    if (videoRef.current && streamRef.current) {
+      videoRef.current.srcObject = streamRef.current;
+    }
+  }, [isInspecting]);
 
   const startCamera = async () => {
     try {
