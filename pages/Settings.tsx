@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Save, Trash2, Download, RefreshCw, Smartphone, Eye, Volume2, Shield, Database, Activity, UserCheck, Battery, Radio } from 'lucide-react';
+import { Save, Trash2, RefreshCw, Smartphone, Database, Battery, Radio } from 'lucide-react';
 import { syncPendingRecords } from '../services/db';
 
 const Settings: React.FC = () => {

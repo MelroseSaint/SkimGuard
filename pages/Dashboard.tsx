@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
-import { ShieldAlert, Activity, Map, ArrowUpRight, Signal, Zap, Database, Server, Wifi, Clock, CheckCircle2, WifiOff, CloudOff, Cloud, Target } from 'lucide-react';
+import { ShieldAlert, Activity, Map, ArrowUpRight, Signal, Database, Server, Wifi, Clock, WifiOff, CloudOff, Cloud, Target } from 'lucide-react';
 import { getStats, getDetections } from '../services/db';
 import { Stats, DetectionRecord } from '../types';
 import { Link } from 'react-router-dom';
