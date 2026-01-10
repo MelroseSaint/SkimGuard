@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Save, Trash2, RefreshCw, Smartphone, Database, Battery, Radio, Lock, Shield, Server, Router, Power } from 'lucide-react';
+import { Save, Trash2, RefreshCw, Smartphone, Database, Battery, Radio, Lock, Shield, Server, Router, Power, Waves, AlertTriangle, Filter } from 'lucide-react';
 import { syncPendingRecords } from '../services/db';
 import { MDMService } from '../services/mdm';
 import { DeviceIdentity } from '../types';
@@ -10,6 +10,8 @@ const Settings: React.FC = () => {
   const [lowPowerMode, setLowPowerMode] = useState(false);
   const [haptic, setHaptic] = useState(true);
   const [autoLock, setAutoLock] = useState(true);
+  const [signalFiltering, setSignalFiltering] = useState(true);
+  const [smartFilter, setSmartFilter] = useState(true);
   
   const [isSyncing, setIsSyncing] = useState(false);
   const [identity, setIdentity] = useState<DeviceIdentity | null>(null);
@@ -20,11 +22,15 @@ const Settings: React.FC = () => {
     const savedRssi = localStorage.getItem('sg_rssiThreshold');
     const savedLowPower = localStorage.getItem('sg_lowPower');
     const savedAutoLock = localStorage.getItem('sg_autoLock');
+    const savedFiltering = localStorage.getItem('sg_signalFiltering');
+    const savedSmartFilter = localStorage.getItem('sg_smartFilter');
 
     if (savedSensitivity) setSensitivity(parseInt(savedSensitivity));
     if (savedRssi) setRssiThreshold(parseInt(savedRssi));
     if (savedLowPower) setLowPowerMode(savedLowPower === 'true');
     if (savedAutoLock) setAutoLock(savedAutoLock === 'true');
+    if (savedFiltering !== null) setSignalFiltering(savedFiltering === 'true');
+    if (savedSmartFilter !== null) setSmartFilter(savedSmartFilter === 'true');
     
     // Load MDM Identity
     setIdentity(MDMService.getIdentity());
@@ -35,6 +41,8 @@ const Settings: React.FC = () => {
     localStorage.setItem('sg_rssiThreshold', rssiThreshold.toString());
     localStorage.setItem('sg_lowPower', lowPowerMode.toString());
     localStorage.setItem('sg_autoLock', autoLock.toString());
+    localStorage.setItem('sg_signalFiltering', signalFiltering.toString());
+    localStorage.setItem('sg_smartFilter', smartFilter.toString());
     alert("Configuration Saved Locally");
   };
 
@@ -54,6 +62,26 @@ const Settings: React.FC = () => {
       if (confirm("WARNING: MDM REMOTE WIPE\n\nThis will simulate a corporate remote wipe command. All local databases and keys will be destroyed instantly. This is irreversible.\n\nProceed?")) {
           MDMService.remoteWipe();
       }
+  };
+
+  const toggleFiltering = (enabled: boolean) => {
+    if (!enabled) {
+        if (confirm("⚠️ CAUTION: DISABLING SIGNAL FILTERING\n\nRaw signal data is extremely volatile due to RF interference and multipath effects.\n\nDisabling the noise filter will result in erratic graph movements and potential false-positive proximity alerts.\n\nAre you sure you want to proceed with RAW DATA mode?")) {
+            setSignalFiltering(false);
+        }
+    } else {
+        setSignalFiltering(true);
+    }
+  };
+
+  const toggleSmartFilter = (enabled: boolean) => {
+    if (!enabled) {
+        if (confirm("⚠️ SECURITY WARNING: DISABLING SMART FILTER\n\nYou are about to disable the benign device suppression protocol.\n\nThis will flag ALL detected Bluetooth devices as potential threats, regardless of their signature (e.g. Headphones, Smartwatches).\n\nThis creates significant noise and high false-positive rates.\n\nProceed with UNFILTERED SCANNING?")) {
+            setSmartFilter(false);
+        }
+    } else {
+        setSmartFilter(true);
+    }
   };
 
   return (
@@ -175,6 +203,52 @@ const Settings: React.FC = () => {
                    />
                    <p className="text-[10px] text-slate-500 mt-1">Triggers "PROXIMITY ALERT" when signal is stronger than this value.</p>
                 </div>
+
+                {/* Signal Filtering Toggle */}
+                <div className={`p-3 rounded-lg border transition-all ${!signalFiltering ? 'bg-danger/10 border-danger/30' : 'bg-slate-800/50 border-slate-700'}`}>
+                   <div className="flex items-center justify-between mb-2">
+                       <div className="flex items-center space-x-3">
+                          <Waves className={`w-4 h-4 ${!signalFiltering ? 'text-danger' : 'text-slate-400'}`} />
+                          <div>
+                            <span className="text-sm text-slate-200 block font-bold">Signal Noise Filtering</span>
+                            <span className="text-[10px] text-slate-400">Smooths erratic Bluetooth RSSI data.</span>
+                          </div>
+                       </div>
+                       <Toggle checked={signalFiltering} onChange={toggleFiltering} />
+                   </div>
+                   {!signalFiltering && (
+                       <div className="flex items-start mt-2 text-[10px] text-danger font-mono bg-black/40 p-2 rounded">
+                           <AlertTriangle className="w-3 h-3 mr-1.5 shrink-0" />
+                           WARNING: Raw data mode. Expect high volatility.
+                       </div>
+                   )}
+                </div>
+
+                {/* Bluetooth Smart Filter Toggle */}
+                <div className={`p-3 rounded-lg border transition-all ${!smartFilter ? 'bg-accent/10 border-accent/30' : 'bg-slate-800/50 border-slate-700'}`}>
+                   <div className="flex items-center justify-between mb-2">
+                       <div className="flex items-center space-x-3">
+                          <Filter className={`w-4 h-4 ${!smartFilter ? 'text-accent' : 'text-slate-400'}`} />
+                          <div>
+                            <span className="text-sm text-slate-200 block font-bold">Bluetooth Smart Filter</span>
+                            <span className="text-[10px] text-slate-400">Hides known benign devices (Headphones, etc).</span>
+                          </div>
+                       </div>
+                       <Toggle checked={smartFilter} onChange={toggleSmartFilter} />
+                   </div>
+                   {!smartFilter && (
+                       <div className="flex items-start mt-2 text-[10px] text-accent font-mono bg-black/40 p-2 rounded">
+                           <AlertTriangle className="w-3 h-3 mr-1.5 shrink-0" />
+                           CAUTION: Showing ALL devices. High false-positive risk.
+                       </div>
+                   )}
+                   {smartFilter && (
+                       <div className="mt-2 text-[10px] text-slate-500">
+                           <span className="text-primary font-bold">Active</span>. Only flagged threats will trigger alerts.
+                       </div>
+                   )}
+                </div>
+
              </div>
           </div>
 

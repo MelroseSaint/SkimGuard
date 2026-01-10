@@ -57,6 +57,9 @@ const Scanner: React.FC = () => {
   // Configuration State
   const [rssiThreshold, setRssiThreshold] = useState(-60);
   const [lowPowerMode, setLowPowerMode] = useState(false);
+  const [useSignalFilter, setUseSignalFilter] = useState(true);
+  // Ref for smart filter to access inside event listeners
+  const smartFilterRef = useRef(true);
   
   // UI State
   const [showMobileSensors, setShowMobileSensors] = useState(false);
@@ -92,8 +95,13 @@ const Scanner: React.FC = () => {
   useEffect(() => {
     const savedRssi = localStorage.getItem('sg_rssiThreshold');
     const savedLowPower = localStorage.getItem('sg_lowPower');
+    const savedSignalFilter = localStorage.getItem('sg_signalFiltering');
+    const savedSmartFilter = localStorage.getItem('sg_smartFilter');
+
     if (savedRssi) setRssiThreshold(parseInt(savedRssi));
     if (savedLowPower) setLowPowerMode(savedLowPower === 'true');
+    if (savedSignalFilter !== null) setUseSignalFilter(savedSignalFilter === 'true');
+    if (savedSmartFilter !== null) smartFilterRef.current = (savedSmartFilter === 'true');
     
     // Acquire GPS immediately in background
     acquireLocation();
@@ -293,12 +301,16 @@ const Scanner: React.FC = () => {
       activeDeviceRef.current = null;
   };
 
-  const identifyDevice = (name: string) => {
+  const identifyDevice = (name: string, smartFilterEnabled: boolean) => {
       const upperName = name.toUpperCase();
       const match = THREAT_SIGNATURES.find(sig => upperName.includes(sig.prefix));
       if (match) return match;
       if (['UNNAMED', 'DEVICE', 'BT05', 'HC-05'].includes(upperName)) {
           return { type: 'Generic Suspicious', risk: 'MED' };
+      }
+      // If Smart Filter is disabled, we flag unknown devices as potential risks for manual review
+      if (!smartFilterEnabled) {
+          return { type: 'Unverified Device (Raw Mode)', risk: 'LOW' };
       }
       return null;
   };
@@ -327,7 +339,9 @@ const Scanner: React.FC = () => {
             
             const name = device.name || "Unknown Device";
             const id = device.id;
-            const threatInfo = identifyDevice(name);
+            
+            // Check Threat Status based on Smart Filter setting
+            const threatInfo = identifyDevice(name, smartFilterRef.current);
             const isThreat = !!threatInfo;
 
             setBtList(prev => {
@@ -349,7 +363,7 @@ const Scanner: React.FC = () => {
                 if (typeof rawRssi !== 'number') return;
                 
                 setSignalStrength(prev => {
-                    const filtered = filterRSSI(rawRssi, prev);
+                    const filtered = useSignalFilter ? filterRSSI(rawRssi, prev) : rawRssi;
                     if (isThreat && filtered > rssiThreshold) {
                         setChecklist(p => ({ ...p, bluetoothSignal: true }));
                     }
@@ -360,7 +374,7 @@ const Scanner: React.FC = () => {
                     const existingIdx = prevList.findIndex(d => d.id === id);
                     const previousItem = existingIdx >= 0 ? prevList[existingIdx] : null;
                     const prevSmooth = previousItem ? previousItem.smoothRssi : rawRssi;
-                    const newSmooth = filterRSSI(rawRssi, prevSmooth);
+                    const newSmooth = useSignalFilter ? filterRSSI(rawRssi, prevSmooth) : rawRssi;
 
                     const newItem: BluetoothDeviceItem = {
                         id: id,
