@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
-import { ShieldAlert, Activity, Map, ArrowUpRight, Signal, Database, Server, Wifi, Clock, WifiOff, CloudOff, Cloud, Target } from 'lucide-react';
+import { ShieldAlert, Activity, Map, ArrowUpRight, Signal, Database, Server, Wifi, Clock, WifiOff, Cloud, Target } from 'lucide-react';
 import { getStats, getDetections } from '../services/db';
 import { Stats, DetectionRecord } from '../types';
 import { Link } from 'react-router-dom';
@@ -43,7 +43,7 @@ const Dashboard: React.FC = () => {
   if (loading) return <div className="flex justify-center items-center h-full text-slate-500 font-mono text-sm">INITIALIZING SYSTEM...</div>;
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
+    <div className="space-y-6 animate-in fade-in duration-500 pb-20 md:pb-0">
       
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -56,7 +56,7 @@ const Dashboard: React.FC = () => {
                  </span>
              ) : (
                  <span className="bg-slate-800 text-slate-400 text-[10px] font-bold px-2 py-0.5 rounded border border-slate-700 uppercase flex items-center">
-                    <CloudOff className="w-3 h-3 mr-1 text-danger" /> Offline Mode
+                    <WifiOff className="w-3 h-3 mr-1 text-danger" /> Offline Mode
                  </span>
              )}
              
@@ -149,7 +149,7 @@ const Dashboard: React.FC = () => {
             </div>
           </div>
           
-          <div className="h-64 w-full flex-1">
+          <div className="h-64 w-full flex-1 min-h-[250px]">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={trendData}>
                 <defs>
@@ -199,7 +199,7 @@ const Dashboard: React.FC = () => {
       </div>
 
       {/* Recent Activity Row */}
-      <div className="bg-surface border border-border rounded-xl p-5 shadow-xl">
+      <div className="bg-surface border border-border rounded-xl p-5 shadow-xl overflow-hidden">
         <div className="flex items-center justify-between mb-4">
            <div>
              <h3 className="text-base font-semibold text-white">Recent Activity</h3>
@@ -211,7 +211,7 @@ const Dashboard: React.FC = () => {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left">
+          <table className="w-full text-left min-w-[500px]">
              <thead className="text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-border">
                 <tr>
                    <th className="pb-3 pl-2">Time</th>

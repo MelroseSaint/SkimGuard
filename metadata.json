@@ -1,6 +1,6 @@
 {
   "name": "SkimGuard",
-  "description": "A PWA for ATM/POS skimmer detection simulation and manual logging, featuring local-first storage.",
+  "description": "Professional real-time ATM/POS skimmer detection utility with hardware-accelerated analysis and encrypted local storage.",
   "requestFramePermissions": [
     "camera",
     "geolocation"

@@ -56,3 +56,31 @@ export interface Stats {
   confirmed: number;
   pendingSync: number;
 }
+
+// --- MDM Types ---
+
+export interface DeviceIdentity {
+  assetTag: string; // UUID v4
+  userAgent: string;
+  platform: string;
+  screenRes: string;
+  lastCheckIn: number;
+  registeredAt: number;
+}
+
+export interface SecurityPolicy {
+  requireOnline: boolean;
+  minBatteryLevel: number;
+  requireGeolocation: boolean;
+  allowCamera: boolean;
+  maxOfflineDuration: number; // in minutes
+}
+
+export interface ComplianceStatus {
+  isCompliant: boolean;
+  violations: string[];
+  batteryLevel: number | 'unknown';
+  isCharging: boolean | 'unknown';
+  networkStatus: 'online' | 'offline';
+  locationPermission: 'granted' | 'denied' | 'prompt' | 'unknown';
+}

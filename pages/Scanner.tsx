@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { Camera, Save, TriangleAlert, Zap, Scan, Radio, Target, RefreshCw, Activity, XCircle, CheckCircle, Flag, SignalHigh, SignalMedium, SignalLow, Fingerprint, Info, Battery, MapPin } from 'lucide-react';
+import { Camera, Save, TriangleAlert, Zap, Scan, Radio, Target, RefreshCw, Activity, XCircle, CheckCircle, Flag, SignalHigh, SignalMedium, SignalLow, Fingerprint, Info, Battery, MapPin, ChevronUp, ChevronDown, Sun } from 'lucide-react';
 import { calculateRisk } from '../services/gemini';
 import { TrustAuthority } from '../services/trustLayer';
 import { DetectionRecord, DetectionStatus, InspectionChecklist, SyncStatus, DeviceLog } from '../types';
@@ -47,13 +47,19 @@ const Scanner: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   
+  // Real-time analysis refs to avoid state thrashing in render loop
+  const reflectionMetricRef = useRef<number>(0);
+  
   // Active Bluetooth Tracker
   const activeDeviceRef = useRef<BluetoothDevice | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   
-  // Configuration State (Loaded from Settings)
+  // Configuration State
   const [rssiThreshold, setRssiThreshold] = useState(-60);
   const [lowPowerMode, setLowPowerMode] = useState(false);
+  
+  // UI State
+  const [showMobileSensors, setShowMobileSensors] = useState(false);
   
   // Hardware State
   const [hasFlash, setHasFlash] = useState(false);
@@ -67,7 +73,7 @@ const Scanner: React.FC = () => {
   
   // Sensor State
   const [signalStrength, setSignalStrength] = useState(-100); 
-  const [overlayThickness, setOverlayThickness] = useState(0.0);
+  const [reflectionIndex, setReflectionIndex] = useState(0.0);
   const [locationData, setLocationData] = useState<{latitude: number, longitude: number, accuracy?: number} | undefined>(undefined);
   
   // Checklist
@@ -133,34 +139,60 @@ const Scanner: React.FC = () => {
     return (alpha * current) + ((1 - alpha) * previous);
   };
 
-  // Real-time Visual Loop
+  // Real-time Visual Loop (Computer Vision)
   useEffect(() => {
     let animationFrameId: number;
+    let frameCount = 0;
 
     const renderLoop = () => {
       if (isInspecting && videoRef.current && canvasRef.current) {
         const video = videoRef.current;
         const canvas = canvasRef.current;
-        const ctx = canvas.getContext('2d');
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
 
         if (ctx && video.readyState === video.HAVE_ENOUGH_DATA) {
           canvas.width = video.videoWidth;
           canvas.height = video.videoHeight;
           
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-          const newThickness = Math.max(0, 0.4 + (Math.random() * 0.05 - 0.025));
-          
-          const isCritical = signalStrength > rssiThreshold || newThickness > 0.8;
-          
-          ctx.strokeStyle = isCritical ? '#EF4444' : '#10B981';
-          ctx.lineWidth = 4;
-          
-          const boxW = canvas.width * 0.6;
-          const boxH = canvas.height * 0.4;
+          // Responsive box geometry
+          const boxW = canvas.width * (window.innerWidth < 768 ? 0.8 : 0.6);
+          const boxH = canvas.height * (window.innerWidth < 768 ? 0.3 : 0.4);
           const x = (canvas.width - boxW) / 2;
           const y = (canvas.height - boxH) / 2;
 
+          // Real-time Analysis: Calculate Luminance in the ROI (Region of Interest)
+          // Analyze center 50x50 pixels for reflection spikes (tape/plastic)
+          if (frameCount % 5 === 0) { // Throttled analysis for performance
+              try {
+                  const sampleSize = 50;
+                  const sx = x + (boxW - sampleSize) / 2;
+                  const sy = y + (boxH - sampleSize) / 2;
+                  const frame = ctx.getImageData(sx, sy, sampleSize, sampleSize);
+                  const data = frame.data;
+                  let brightnessSum = 0;
+                  
+                  // Simple luminance calculation
+                  for(let i = 0; i < data.length; i += 4) {
+                      brightnessSum += (0.299 * data[i] + 0.587 * data[i+1] + 0.114 * data[i+2]);
+                  }
+                  
+                  const avgBrightness = brightnessSum / (data.length / 4);
+                  // Normalize 0-255 to 0-100 score
+                  reflectionMetricRef.current = (avgBrightness / 255) * 100;
+              } catch (e) {
+                  // Ignore frame read errors
+              }
+          }
+          frameCount++;
+
+          const currentReflection = reflectionMetricRef.current;
+          const isCritical = signalStrength > rssiThreshold || currentReflection > 85; // >85% brightness implies glare/tape
+          
+          // Draw HUD
+          ctx.strokeStyle = isCritical ? '#EF4444' : '#10B981';
+          ctx.lineWidth = 4;
           ctx.strokeRect(x, y, boxW, boxH);
           
           const cornerLen = 20;
@@ -170,9 +202,10 @@ const Scanner: React.FC = () => {
 
           ctx.font = 'bold 24px monospace';
           ctx.fillStyle = isCritical ? '#EF4444' : '#10B981';
+          ctx.textAlign = "left";
           
-          const statusText = signalStrength > -100 ? `RSSI: ${signalStrength.toFixed(0)}dBm` : "SENSORS ACTIVE";
-          ctx.fillText(isCritical ? "THREAT DETECTED" : statusText, x, y - 15);
+          const statusText = signalStrength > -100 ? `RSSI: ${signalStrength.toFixed(0)}dBm` : "MONITORING ACTIVE";
+          ctx.fillText(isCritical ? "ANOMALY DETECTED" : statusText, x, y - 15);
         }
       }
       animationFrameId = requestAnimationFrame(renderLoop);
@@ -180,10 +213,11 @@ const Scanner: React.FC = () => {
 
     if (isInspecting) {
       renderLoop();
+      // Sync CV data to React State for UI updates (less frequent than render loop)
       const interval = setInterval(() => {
-         // Fix: remove unused 'prev' argument
-         setOverlayThickness(() => Math.max(0, 0.4 + (Math.random() * 0.1 - 0.05)));
-      }, 500);
+         setReflectionIndex(reflectionMetricRef.current);
+      }, 200);
+
       return () => {
         clearInterval(interval);
         cancelAnimationFrame(animationFrameId);
@@ -199,7 +233,6 @@ const Scanner: React.FC = () => {
     };
   }, []);
 
-  // Re-attach stream when switching views
   useEffect(() => {
     if (videoRef.current && streamRef.current) {
       videoRef.current.srcObject = streamRef.current;
@@ -208,18 +241,31 @@ const Scanner: React.FC = () => {
 
   const startCamera = async () => {
     try {
+      // Try preferred settings first
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } }
       });
+      applyStream(stream);
+    } catch (err) {
+      console.warn("Preferred camera config failed, falling back to default.", err);
+      try {
+        // Fallback for laptops/desktops without 'environment' facing mode
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        applyStream(stream);
+      } catch (fatalErr) {
+        console.error("Camera entirely unavailable", fatalErr);
+        alert("Camera access denied or unavailable. Please check system permissions.");
+      }
+    }
+  };
+
+  const applyStream = (stream: MediaStream) => {
       streamRef.current = stream;
       if (videoRef.current) videoRef.current.srcObject = stream;
 
       const track = stream.getVideoTracks()[0];
       const caps = (track.getCapabilities ? track.getCapabilities() : {}) as any;
       if (caps.torch) setHasFlash(true);
-    } catch (err) {
-      console.error("Camera error:", err);
-    }
   };
 
   const stopCamera = () => {
@@ -284,7 +330,6 @@ const Scanner: React.FC = () => {
             const threatInfo = identifyDevice(name);
             const isThreat = !!threatInfo;
 
-            // Update UI immediately with initial data
             setBtList(prev => {
                  const clean = prev.filter(d => d.id !== id);
                  return [{
@@ -348,8 +393,6 @@ const Scanner: React.FC = () => {
                 }
             } catch (err) {
                 console.warn("Failed to watch advertisements:", err);
-                // We don't alert here to avoid interrupting the user flow, 
-                // since we already added the device to the list.
             }
         }
     } catch (error) {
@@ -404,8 +447,6 @@ const Scanner: React.FC = () => {
 
   const confirmAndSave = async (status: DetectionStatus) => {
     setIsSaving(true);
-    
-    // Convert local Bluetooth items to persistent DeviceLogs
     const deviceLogs: DeviceLog[] = btList.map(item => ({
         id: item.id,
         name: item.name,
@@ -415,7 +456,6 @@ const Scanner: React.FC = () => {
     }));
 
     const riskAnalysis = calculateRisk(checklist, deviceLogs);
-    
     if (status === DetectionStatus.CONFIRMED) {
         riskAnalysis.isSuspicious = true;
         riskAnalysis.riskScore = 100;
@@ -434,7 +474,6 @@ const Scanner: React.FC = () => {
 
     try {
       await TrustAuthority.submitDetection(record);
-      
       setIsSaving(false);
       setShowConfirmModal(false);
       setCapturedImage(null);
@@ -488,9 +527,10 @@ const Scanner: React.FC = () => {
   return (
     <div className="flex flex-col h-[calc(100vh-64px)] bg-background relative">
       {/* HUD Header */}
-      <div className="bg-surface border-b border-border p-3 flex items-center justify-between z-10">
+      <div className="bg-surface border-b border-border p-3 flex items-center justify-between z-10 shrink-0">
         <div className="flex items-center space-x-4">
-          <span className="text-lg font-bold text-white">ATM #4492-BX</span>
+          <span className="text-lg font-bold text-white hidden md:inline">ATM #4492-BX</span>
+          <span className="text-sm font-bold text-white md:hidden">SCANNING...</span>
           <div className="flex items-center space-x-2">
             <span className={`text-[10px] font-bold px-2 py-0.5 rounded border animate-pulse ${checklist.bluetoothSignal || signalStrength > rssiThreshold ? 'bg-danger/20 text-danger border-danger/20' : 'bg-primary/20 text-primary border-primary/20'}`}>
                {checklist.bluetoothSignal || signalStrength > rssiThreshold ? 'SIGNAL ALERT' : 'NOMINAL'}
@@ -501,12 +541,20 @@ const Scanner: React.FC = () => {
                 </span>
             ) : (
                 <span className="text-[10px] bg-slate-800 text-slate-500 border border-slate-700 px-1 rounded flex items-center animate-pulse">
-                    <MapPin className="w-3 h-3 mr-0.5" /> LOCATING...
+                    <MapPin className="w-3 h-3 mr-0.5" /> LOCATING
                 </span>
             )}
           </div>
         </div>
         <div className="flex space-x-2">
+          {/* Mobile Sensor Toggle */}
+          <button 
+            onClick={() => setShowMobileSensors(!showMobileSensors)} 
+            className={`md:hidden p-2 rounded border transition-colors ${showMobileSensors ? 'bg-primary text-background border-primary' : 'bg-surface border-slate-700 text-slate-400'}`}
+          >
+            <Activity className="w-4 h-4" />
+          </button>
+          
           {hasFlash && (
              <button onClick={toggleFlash} className={`p-2 rounded border ${flashOn ? 'bg-accent/20 border-accent text-accent' : 'bg-surface border-slate-700 text-slate-400'}`}>
                <Zap className="w-4 h-4" />
@@ -533,9 +581,10 @@ const Scanner: React.FC = () => {
           </div>
         </div>
 
-        <div className="w-80 bg-surface border-l border-border flex flex-col overflow-y-auto hidden md:flex">
+        {/* Desktop Sidebar */}
+        <div className="w-80 bg-surface border-l border-border flex-col overflow-y-auto hidden md:flex">
           <SidebarContent 
-             overlayThickness={overlayThickness} 
+             reflectionIndex={reflectionIndex} 
              signalStrength={signalStrength}
              btList={btList}
              checklist={checklist}
@@ -546,16 +595,29 @@ const Scanner: React.FC = () => {
              rssiThreshold={rssiThreshold}
           />
         </div>
-      </div>
 
-      <div className="md:hidden bg-surface border-t border-border p-4">
-         <button 
-           onClick={initiateReview}
-           className="w-full py-3 bg-white text-background font-bold rounded shadow-lg flex items-center justify-center"
-         >
-           <Save className="w-4 h-4 mr-2" />
-           CAPTURE & VERIFY
-         </button>
+        {/* Mobile Slide-over Sidebar */}
+        {showMobileSensors && (
+            <div className="absolute inset-x-0 bottom-0 top-0 z-30 bg-background/95 backdrop-blur-md p-0 overflow-y-auto md:hidden animate-in slide-in-from-bottom-10 flex flex-col">
+                <div className="flex justify-between items-center p-4 border-b border-border">
+                    <h3 className="text-white font-bold">Sensor Data</h3>
+                    <button onClick={() => setShowMobileSensors(false)} className="p-2 text-slate-400"><ChevronDown /></button>
+                </div>
+                <div className="flex-1 overflow-y-auto">
+                    <SidebarContent 
+                        reflectionIndex={reflectionIndex} 
+                        signalStrength={signalStrength}
+                        btList={btList}
+                        checklist={checklist}
+                        setChecklist={setChecklist}
+                        scanBluetooth={scanBluetooth}
+                        isScanning={isScanning}
+                        initiateReview={initiateReview}
+                        rssiThreshold={rssiThreshold}
+                    />
+                </div>
+            </div>
+        )}
       </div>
 
       {showPreviewModal && (
@@ -649,22 +711,23 @@ const Scanner: React.FC = () => {
   );
 };
 
-const SidebarContent: React.FC<any> = ({ overlayThickness, signalStrength, btList, checklist, setChecklist, scanBluetooth, isScanning, initiateReview, rssiThreshold }) => (
+const SidebarContent: React.FC<any> = ({ reflectionIndex, signalStrength, btList, checklist, setChecklist, scanBluetooth, isScanning, initiateReview, rssiThreshold }) => (
   <>
     <div className="p-4 border-b border-border">
       <h3 className="text-xs font-bold text-slate-400 uppercase mb-3 flex items-center">
-        <Activity className="w-3 h-3 mr-2" /> Hardware Integrity
+        <Activity className="w-3 h-3 mr-2" /> Real-Time Analytics
       </h3>
       
       <div className="bg-background border border-border rounded p-3 mb-3">
         <div className="flex justify-between text-xs mb-1">
-          <span className="text-slate-400">OVERLAY THICKNESS</span>
-          <span className={`${overlayThickness > 0.8 ? 'text-danger' : 'text-primary'} font-mono font-bold`}>{overlayThickness > 0.8 ? 'CRITICAL' : 'NORMAL'}</span>
+          <span className="text-slate-400 flex items-center"><Sun className="w-3 h-3 mr-1" /> SURFACE REFLECTION (SRI)</span>
+          <span className={`${reflectionIndex > 85 ? 'text-danger' : 'text-primary'} font-mono font-bold`}>{reflectionIndex > 85 ? 'HIGH GLARE' : 'NORMAL'}</span>
         </div>
-        <div className="text-2xl font-bold text-white mb-1 font-mono">{overlayThickness.toFixed(2)}<span className="text-sm text-slate-500">mm</span></div>
+        <div className="text-2xl font-bold text-white mb-1 font-mono">{reflectionIndex.toFixed(1)}<span className="text-sm text-slate-500">%</span></div>
         <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
-            <div className={`${overlayThickness > 0.8 ? 'bg-danger' : 'bg-primary'} h-full transition-all duration-300`} style={{width: `${(overlayThickness/1.5)*100}%`}}></div>
+            <div className={`${reflectionIndex > 85 ? 'bg-danger' : 'bg-primary'} h-full transition-all duration-300`} style={{width: `${reflectionIndex}%`}}></div>
         </div>
+        <p className="text-[9px] text-slate-500 mt-1">High luminance often indicates taped overlays.</p>
       </div>
 
       <div className="bg-background border border-border rounded p-3 mb-3">
@@ -752,16 +815,6 @@ const SidebarContent: React.FC<any> = ({ overlayThickness, signalStrength, btLis
           <CheckItem label="Keypad Obstruction" checked={checklist.keypadObstruction} onChange={(v: boolean) => setChecklist((p: any) => ({...p, keypadObstruction: v}))} />
           <CheckItem label="Hidden Cameras" checked={checklist.hiddenCamera} onChange={(v: boolean) => setChecklist((p: any) => ({...p, hiddenCamera: v}))} />
       </div>
-    </div>
-
-    <div className="p-4 border-t border-border bg-background">
-        <button 
-          onClick={initiateReview}
-          className="w-full py-3 bg-white text-background hover:bg-slate-200 font-bold rounded shadow-lg flex items-center justify-center transition-transform active:scale-95"
-        >
-          <Save className="w-4 h-4 mr-2" />
-          ANALYZE & VERIFY
-        </button>
     </div>
   </>
 );

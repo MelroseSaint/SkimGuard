@@ -90,11 +90,17 @@ const Review: React.FC = () => {
       </div>
 
       <div className="bg-surface border border-border rounded-xl overflow-hidden shadow-xl">
-        <div className="grid grid-cols-12 gap-4 p-4 border-b border-border bg-slate-900/50 text-xs font-bold text-slate-500 uppercase tracking-wider">
+        {/* Desktop Header */}
+        <div className="hidden md:grid grid-cols-12 gap-4 p-4 border-b border-border bg-slate-900/50 text-xs font-bold text-slate-500 uppercase tracking-wider">
            <div className="col-span-3">Timestamp / Device ID</div>
            <div className="col-span-3">Threat Type</div>
            <div className="col-span-3">Confidence Score</div>
            <div className="col-span-3 text-right">Action</div>
+        </div>
+        
+        {/* Mobile Header */}
+        <div className="md:hidden p-4 border-b border-border bg-slate-900/50 text-xs font-bold text-slate-500 uppercase tracking-wider">
+           Log Entries
         </div>
 
         <div className="divide-y divide-border">
@@ -141,44 +147,56 @@ const DetectionRow: React.FC<{
   return (
     <>
       <div 
-        className={`grid grid-cols-12 gap-4 p-4 items-center hover:bg-slate-800/30 transition-colors group cursor-pointer ${expanded ? 'bg-slate-800/50' : ''}`}
+        className={`flex flex-col md:grid md:grid-cols-12 gap-2 md:gap-4 p-4 hover:bg-slate-800/30 transition-colors group cursor-pointer ${expanded ? 'bg-slate-800/50' : ''}`}
         onClick={() => setExpanded(!expanded)}
       >
         {/* Timestamp & ID */}
-        <div className="col-span-3">
-          <div className="text-xs text-slate-400 font-mono mb-0.5">
-            {date.toISOString().split('T')[0]} <span className="text-slate-600">|</span> {date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'})}
+        <div className="flex justify-between items-center md:block md:col-span-3">
+          <div>
+              <div className="text-xs text-slate-400 font-mono mb-0.5">
+                {date.toLocaleDateString()} <span className="hidden md:inline">| {date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+              </div>
+              <div className="text-sm font-bold text-white font-mono">
+                {record.deviceType || "TERM-8842-X"}
+              </div>
           </div>
-          <div className="text-sm font-bold text-white font-mono">
-            {record.deviceType || "TERM-8842-X"}
+          {/* Mobile Only Status Badge - right aligned next to ID */}
+          <div className="md:hidden">
+              {isConfirmed ? (
+                <AlertCircle className="w-5 h-5 text-danger" />
+              ) : isPending ? (
+                <ShieldAlert className="w-5 h-5 text-accent animate-pulse" />
+              ) : (
+                <CheckCircle2 className="w-5 h-5 text-slate-600" />
+              )}
           </div>
         </div>
 
         {/* Threat Type */}
-        <div className="col-span-3">
+        <div className="md:col-span-3 mt-1 md:mt-0">
           {isConfirmed ? (
             <span className="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-bold bg-danger/10 text-danger border border-danger/20">
-              <AlertCircle className="w-3 h-3 mr-1.5" />
+              <span className="hidden md:inline"><AlertCircle className="w-3 h-3 mr-1.5" /></span>
               CONFIRMED THREAT
             </span>
           ) : isPending ? (
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-bold bg-accent/10 text-accent border border-accent/20 animate-pulse">
-              <ShieldAlert className="w-3 h-3 mr-1.5" />
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-bold bg-accent/10 text-accent border border-accent/20">
+              <span className="hidden md:inline"><ShieldAlert className="w-3 h-3 mr-1.5" /></span>
               ACTION REQUIRED
             </span>
           ) : (
             <span className="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-bold bg-slate-800 text-slate-400 border border-slate-700">
-              <CheckCircle2 className="w-3 h-3 mr-1.5" />
+               <span className="hidden md:inline"><CheckCircle2 className="w-3 h-3 mr-1.5" /></span>
               Verified Safe
             </span>
           )}
         </div>
 
         {/* Confidence Bar */}
-        <div className="col-span-3 pr-4">
+        <div className="md:col-span-3 md:pr-4 mt-1 md:mt-0">
           <div className="flex items-center justify-between mb-1.5">
             <span className={`text-xs font-mono font-bold ${isHighRisk ? 'text-danger' : 'text-primary'}`}>
-              {score.toFixed(1)}%
+              Risk: {score.toFixed(0)}%
             </span>
           </div>
           <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
@@ -190,7 +208,7 @@ const DetectionRow: React.FC<{
         </div>
 
         {/* Action */}
-        <div className="col-span-3 flex justify-end space-x-2">
+        <div className="md:col-span-3 flex justify-end space-x-2 mt-2 md:mt-0 items-center">
           {isPending && (
               <button 
                 onClick={(e) => { e.stopPropagation(); onConfirm(); }}
@@ -230,7 +248,7 @@ const DetectionRow: React.FC<{
 
       {/* Expanded Details */}
       {expanded && (
-       <div className="bg-slate-900/50 border-b border-border p-6 animate-in slide-in-from-top-2">
+       <div className="bg-slate-900/50 border-b border-border p-4 md:p-6 animate-in slide-in-from-top-2">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
              {/* Left Column: Evidence & Location */}
              <div>

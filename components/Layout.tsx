@@ -1,31 +1,160 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { NavLink, Link } from 'react-router-dom';
-import { ShieldCheck, Activity, Search, Database, Settings, BookOpen, Menu, X, Bell, User, Shield, AlertTriangle, Lock, Globe } from 'lucide-react';
+import { ShieldCheck, Activity, Search, Database, Settings, BookOpen, Menu, X, Bell, User, Shield, AlertTriangle, Lock, Globe, Unlock, Fingerprint, Router, Siren } from 'lucide-react';
+import { MDMService } from '../services/mdm';
+import { ComplianceStatus } from '../types';
 
 interface LayoutProps {
   children: React.ReactNode;
 }
+
+const IDLE_TIMEOUT = 5 * 60 * 1000; // 5 minutes
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
 
+  // Security Lock State
+  const [isLocked, setIsLocked] = useState(false);
+  const lastActivity = useRef<number>(Date.now());
+  const intervalRef = useRef<number>(0);
+
+  // MDM State
+  const [compliance, setCompliance] = useState<ComplianceStatus | null>(null);
+  const [isQuarantined, setIsQuarantined] = useState(false);
+
+  const resetTimer = useCallback(() => {
+     lastActivity.current = Date.now();
+  }, []);
+
+  // MDM Heartbeat Loop
   useEffect(() => {
+    const runMDMCheck = async () => {
+        const status = await MDMService.checkCompliance();
+        setCompliance(status);
+        if (!status.isCompliant) {
+            setIsQuarantined(true);
+        } else {
+            setIsQuarantined(false);
+        }
+    };
+
+    // Initial check
+    runMDMCheck();
+
+    // Loop
+    const mdmInterval = setInterval(runMDMCheck, 5000); // Check every 5s
+
+    return () => clearInterval(mdmInterval);
+  }, []);
+
+  // Idle Timer
+  useEffect(() => {
+    const handleActivity = () => resetTimer();
+    
+    // Event listeners for user activity
+    window.addEventListener('mousemove', handleActivity);
+    window.addEventListener('touchstart', handleActivity);
+    window.addEventListener('keydown', handleActivity);
+    window.addEventListener('click', handleActivity);
+
+    // Check for idle
+    intervalRef.current = window.setInterval(() => {
+        const inactiveTime = Date.now() - lastActivity.current;
+        if (inactiveTime > IDLE_TIMEOUT && !isLocked) {
+            setIsLocked(true);
+        }
+    }, 10000); // Check every 10s
+
     const handleClickOutside = (event: MouseEvent) => {
       if (notifRef.current && !notifRef.current.contains(event.target as Node)) {
         setShowNotifications(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+    
+    return () => {
+        window.removeEventListener('mousemove', handleActivity);
+        window.removeEventListener('touchstart', handleActivity);
+        window.removeEventListener('keydown', handleActivity);
+        window.removeEventListener('click', handleActivity);
+        document.removeEventListener('mousedown', handleClickOutside);
+        clearInterval(intervalRef.current);
+    };
+  }, [isLocked, resetTimer]);
+
+  const handleUnlock = () => {
+      // In a real app, verify PIN/Biometric here
+      setIsLocked(false);
+      resetTimer();
+  };
 
   return (
-    <div className="flex h-screen bg-background text-slate-100 overflow-hidden">
+    <div className="flex h-screen bg-background text-slate-100 overflow-hidden relative">
       
+      {/* 1. CRITICAL MDM QUARANTINE SCREEN */}
+      {isQuarantined && compliance && (
+          <div className="absolute inset-0 z-[200] bg-red-950/95 backdrop-blur-xl flex flex-col items-center justify-center animate-in zoom-in-95 duration-200">
+             <div className="bg-background border-2 border-danger p-8 rounded-2xl shadow-[0_0_100px_rgba(239,68,68,0.5)] max-w-md w-full text-center relative overflow-hidden">
+                <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-transparent via-danger to-transparent animate-pulse"></div>
+                
+                <div className="w-24 h-24 bg-danger/10 rounded-full flex items-center justify-center mx-auto mb-6 border-2 border-danger animate-pulse">
+                    <Siren className="w-12 h-12 text-danger" />
+                </div>
+                <h2 className="text-3xl font-black text-white mb-2 tracking-tighter">DEVICE QUARANTINED</h2>
+                <p className="text-danger font-mono text-sm mb-6 uppercase tracking-widest">
+                   Corporate Policy Violation Detected
+                </p>
+                
+                <div className="bg-black/50 rounded p-4 text-left border border-danger/30 mb-8">
+                    <h3 className="text-xs font-bold text-slate-400 uppercase mb-2">Non-Compliance Reasons:</h3>
+                    <ul className="space-y-2">
+                        {compliance.violations.map((v, i) => (
+                            <li key={i} className="flex items-center text-sm font-bold text-white">
+                                <X className="w-4 h-4 text-danger mr-2" />
+                                {v}
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+                
+                <p className="text-xs text-slate-500 mb-0">
+                   Access is revoked until compliance is restored. <br/>
+                   Check device settings or contact IT Admin.
+                </p>
+             </div>
+          </div>
+      )}
+
+      {/* 2. SECURITY LOCK SCREEN */}
+      {isLocked && !isQuarantined && (
+          <div className="absolute inset-0 z-[100] bg-background/95 backdrop-blur-xl flex flex-col items-center justify-center animate-in fade-in duration-300">
+             <div className="bg-surface border border-border p-8 rounded-2xl shadow-2xl max-w-sm w-full text-center">
+                <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6 border border-primary/20">
+                    <Lock className="w-10 h-10 text-primary" />
+                </div>
+                <h2 className="text-2xl font-bold text-white mb-2">Session Locked</h2>
+                <p className="text-slate-400 text-sm mb-8">
+                   Security timeout triggered due to inactivity. <br/>
+                   Your data is encrypted and secure.
+                </p>
+                <button 
+                   onClick={handleUnlock}
+                   className="w-full py-3 bg-primary hover:bg-primary/90 text-background font-bold rounded-lg flex items-center justify-center shadow-lg shadow-primary/20 transition-all active:scale-95"
+                >
+                   <Unlock className="w-5 h-5 mr-2" />
+                   RESUME SESSION
+                </button>
+             </div>
+             <div className="mt-8 text-xs text-slate-600 font-mono flex items-center">
+                 <ShieldCheck className="w-3 h-3 mr-1" /> Protected by SkimGuard SecureCore™
+             </div>
+          </div>
+      )}
+
       {/* Desktop Sidebar */}
-      <aside className="hidden md:flex w-64 flex-col bg-surface border-r border-border h-full shrink-0 z-20">
+      <aside className={`hidden md:flex w-64 flex-col bg-surface border-r border-border h-full shrink-0 z-20 ${isLocked || isQuarantined ? 'blur-sm' : ''}`}>
         <div className="h-16 flex items-center px-6 border-b border-border">
           <div className="bg-primary/20 p-1.5 rounded-lg border border-primary/30 mr-3">
             <ShieldCheck className="w-5 h-5 text-primary" />
@@ -58,10 +187,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       </aside>
 
       {/* Main Content Wrapper */}
-      <div className="flex-1 flex flex-col min-w-0 bg-background relative">
+      <div className={`flex-1 flex flex-col min-w-0 bg-background relative ${isLocked || isQuarantined ? 'blur-sm pointer-events-none' : ''}`}>
         
         {/* Header (Mobile & Desktop) */}
-        <header className="h-16 flex items-center justify-between px-4 md:px-8 border-b border-border bg-surface/50 backdrop-blur-md sticky top-0 z-10">
+        <header className="h-16 flex items-center justify-between px-4 md:px-8 border-b border-border bg-surface/50 backdrop-blur-md sticky top-0 z-10 shrink-0">
           <div className="md:hidden flex items-center">
             <div className="bg-primary/20 p-1.5 rounded-lg border border-primary/30 mr-3">
               <ShieldCheck className="w-5 h-5 text-primary" />
@@ -70,11 +199,25 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           </div>
 
           <div className="hidden md:flex items-center text-sm text-slate-400">
-            <span className="w-2 h-2 rounded-full bg-primary mr-2 animate-pulse"></span>
-            System Operational
+            {isQuarantined ? (
+                <span className="flex items-center text-danger font-bold animate-pulse">
+                    <Siren className="w-4 h-4 mr-2" /> MDM POLICY VIOLATION
+                </span>
+            ) : (
+                <span className="flex items-center">
+                    <span className="w-2 h-2 rounded-full bg-primary mr-2 animate-pulse"></span>
+                    System Operational
+                </span>
+            )}
           </div>
 
           <div className="flex items-center space-x-4">
+            {/* MDM Status Pill */}
+            <div className={`hidden md:flex items-center px-2 py-1 rounded border text-[10px] font-bold font-mono ${isQuarantined ? 'bg-danger/10 text-danger border-danger/30' : 'bg-primary/10 text-primary border-primary/30'}`}>
+                <Router className="w-3 h-3 mr-1.5" />
+                {isQuarantined ? 'MDM: BLOCKED' : 'MDM: CONNECTED'}
+            </div>
+
             {/* Notification Center */}
             <div className="relative" ref={notifRef}>
               <button 
@@ -165,8 +308,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         </header>
 
         {/* Content Area */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-8 scroll-smooth">
-          <div className="max-w-6xl mx-auto">
+        <main className="flex-1 overflow-y-auto p-4 md:p-8 scroll-smooth pb-24 md:pb-8">
+          <div className="max-w-6xl mx-auto h-full">
             {children}
           </div>
         </main>
@@ -199,7 +342,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
         {/* Mobile Bottom Tab Bar (Visible only on mobile, hides when menu open) */}
         {!mobileMenuOpen && (
-          <nav className="md:hidden bg-surface border-t border-border flex justify-around items-center h-16 px-2 pb-safe z-40">
+          <nav className="md:hidden bg-surface border-t border-border flex justify-around items-center h-16 px-2 pb-safe z-40 fixed bottom-0 left-0 right-0">
             <NavLink to="/" className={({ isActive }) => `flex flex-col items-center p-2 rounded-lg ${isActive ? 'text-primary' : 'text-slate-500'}`}>
               <Activity className="w-5 h-5" />
               <span className="text-[10px] mt-1 font-medium">Home</span>
