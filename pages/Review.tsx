@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { getDetections, updateDetectionStatus } from '../services/db';
-import { DetectionRecord, DetectionStatus } from '../types';
-import { Check, X, FileDown, Search, TriangleAlert, ShieldCheck, Bluetooth } from 'lucide-react';
+import { getDetections } from '../services/db';
+import { DetectionRecord } from '../types';
+import { FileDown, Search, TriangleAlert, ShieldCheck, Bluetooth } from 'lucide-react';
 
 const Review: React.FC = () => {
   const [detections, setDetections] = useState<DetectionRecord[]>([]);

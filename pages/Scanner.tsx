@@ -1,5 +1,5 @@
-import React, { useRef, useState, useCallback, useEffect } from 'react';
-import { Camera, Save, TriangleAlert, CheckCircle, Zap, ZapOff, Search, Bluetooth, Info } from 'lucide-react';
+import React, { useRef, useState, useEffect } from 'react';
+import { Camera, Save, TriangleAlert, Zap, ZapOff, Search, Bluetooth } from 'lucide-react';
 import { calculateRisk } from '../services/gemini'; // Now serves as Risk Engine
 import { saveDetection } from '../services/db';
 import { DetectionRecord, DetectionStatus, InspectionChecklist } from '../types';
