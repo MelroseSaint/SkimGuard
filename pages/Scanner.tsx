@@ -1,5 +1,5 @@
 import React, { useRef, useState, useCallback, useEffect } from 'react';
-import { Camera, Save, AlertTriangle, CheckCircle, Zap, ZapOff, Search, Bluetooth, Info } from 'lucide-react';
+import { Camera, Save, TriangleAlert, CheckCircle, Zap, ZapOff, Search, Bluetooth, Info } from 'lucide-react';
 import { calculateRisk } from '../services/gemini'; // Now serves as Risk Engine
 import { saveDetection } from '../services/db';
 import { DetectionRecord, DetectionStatus, InspectionChecklist } from '../types';
@@ -320,7 +320,7 @@ const ChecklistItem: React.FC<{
     <div className={`w-6 h-6 rounded flex items-center justify-center border mr-4 ${
       checked ? 'bg-red-500 border-red-500 text-white' : 'border-slate-600'
     }`}>
-      {checked && <AlertTriangle className="w-3.5 h-3.5" />}
+      {checked && <TriangleAlert className="w-3.5 h-3.5" />}
     </div>
     <div className="text-left">
       <div className={`font-medium text-sm ${checked ? 'text-red-400' : 'text-slate-200'}`}>

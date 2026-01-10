@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { ShieldCheck, AlertTriangle, Scan, Activity } from 'lucide-react';
+import { ShieldCheck, TriangleAlert, Scan, Activity } from 'lucide-react';
 import { getStats } from '../services/db';
 import { Stats } from '../types';
 
@@ -58,7 +58,7 @@ const Dashboard: React.FC = () => {
              <span className="text-slate-400 text-sm block mb-1">High Risk Detections</span>
              <div className="text-3xl font-bold text-red-500">{stats.highRisk}</div>
            </div>
-           <AlertTriangle className="w-10 h-10 text-red-500 opacity-80" />
+           <TriangleAlert className="w-10 h-10 text-red-500 opacity-80" />
         </div>
       </div>
 

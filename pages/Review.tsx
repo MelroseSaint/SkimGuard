@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { getDetections, updateDetectionStatus } from '../services/db';
 import { DetectionRecord, DetectionStatus } from '../types';
-import { Check, X, FileDown, Search, AlertTriangle, ShieldCheck, Bluetooth } from 'lucide-react';
+import { Check, X, FileDown, Search, TriangleAlert, ShieldCheck, Bluetooth } from 'lucide-react';
 
 const Review: React.FC = () => {
   const [detections, setDetections] = useState<DetectionRecord[]>([]);
@@ -81,7 +81,7 @@ const Review: React.FC = () => {
                   record.analysis.isSuspicious ? 'bg-red-500/90 text-white' : 'bg-green-500/90 text-white'
                 }`}>
                   {record.analysis.isSuspicious ? (
-                    <><AlertTriangle className="w-3 h-3 mr-1" /> RISK {record.analysis.riskScore}%</>
+                    <><TriangleAlert className="w-3 h-3 mr-1" /> RISK {record.analysis.riskScore}%</>
                   ) : (
                     <><ShieldCheck className="w-3 h-3 mr-1" /> CLEARED</>
                   )}
@@ -95,7 +95,7 @@ const Review: React.FC = () => {
                     {Object.entries(record.analysis.checklist).map(([key, val]) => (
                       val && (
                         <div key={key} className="text-xs text-red-300 bg-red-900/20 px-2 py-1 rounded border border-red-900/30 flex items-center">
-                          <AlertTriangle className="w-3 h-3 mr-1.5 flex-shrink-0" />
+                          <TriangleAlert className="w-3 h-3 mr-1.5 flex-shrink-0" />
                           {key.replace(/([A-Z])/g, ' $1').trim()}
                         </div>
                       )
