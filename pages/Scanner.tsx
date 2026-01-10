@@ -181,7 +181,8 @@ const Scanner: React.FC = () => {
     if (isInspecting) {
       renderLoop();
       const interval = setInterval(() => {
-         setOverlayThickness(prev => Math.max(0, 0.4 + (Math.random() * 0.1 - 0.05)));
+         // Fix: remove unused 'prev' argument
+         setOverlayThickness(() => Math.max(0, 0.4 + (Math.random() * 0.1 - 0.05)));
       }, 500);
       return () => {
         clearInterval(interval);
