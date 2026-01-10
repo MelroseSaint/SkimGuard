@@ -1,36 +1,47 @@
 # 🛡️ SkimGuard (Pro Tool)
 
-**SkimGuard** is a professional manual inspection utility designed to help users identify ATM and Point-of-Sale (POS) skimmers. 
+**SkimGuard** is a professional-grade, real-time inspection utility designed for field agents to identify ATM and Point-of-Sale (POS) skimmers. 
 
-Unlike "magic" detector apps, SkimGuard provides a rigorous **Physical Inspection Protocol** supported by real-time hardware tools (Camera Zoom, Flashlight, Bluetooth Scanning) to assist in verified detection.
+It combines **computer vision**, **RF spectral analysis**, and **physical inspection protocols** into a single, offline-capable progressive web application (PWA).
 
-## ✨ Features
+## ✨ Key Capabilities
 
-- **🔦 Hardware-Assisted Inspection**: 
-  - **High-Intensity Flashlight**: Toggle device torch to inspect dark slots.
-  - **Digital Zoom**: Magnify suspicious gaps or glue residue.
-- **📡 Bluetooth Skimmer Scan**: 
-  - Uses the **Web Bluetooth API** to scan for suspicious Low Energy (BLE) devices often used by cheap skimmer modules (e.g., HC-05).
-- **📝 Structured Protocol**: 
-  - Guides the user through a security checklist (Wiggle test, alignment check, hidden camera search).
-- **📊 Deterministic Risk Engine**: 
-  - Calculates risk scores based on verified physical evidence, not AI guesses.
-- **🔒 Local-First**: 
-  - All reports and images are encrypted and stored locally on your device.
+### 📡 Real-Time Telemetry
+- **Live Dashboard**: Monitor system health, detection volume trends, and hardware status (Battery, GPS, Network) in real-time.
+- **Hardware Integration**: Direct access to device sensors including Magnetometer (simulated via API hooks), Bluetooth Radio, and Camera Torch.
+
+### 🔍 Advanced Detection Engine
+- **Bluetooth Smart Filter**: Automatically suppresses known benign devices (Headphones, Smartwatches) to focus on potential threats.
+- **Raw Signal Mode**: Toggle filters off to visualize raw RSSI volatility and detect faint signals from deeply embedded skimmers.
+- **Visual Analysis**: Real-time luminance detection to identify glossy overlays or tape residue on card readers.
+
+### 🏢 Enterprise MDM & Security
+- **Device Management**: Automatic asset tagging and compliance monitoring (Battery levels, Geolocation permission).
+- **Quarantine Protocol**: Locks the interface if security policies (e.g., offline for >24h) are violated.
+- **Remote Wipe Simulation**: Field agents can execute a "Remote Wipe" to instantly purge the local encrypted vault and reset encryption keys.
+- **AES-256 Encryption**: All evidence logs are encrypted at rest using the Web Crypto API.
+
+### 📝 Forensic Evidence
+- **Chain of Custody**: Generates cryptographically hashed PDF reports for law enforcement handover.
+- **Local Vault**: Stores evidence fully offline in IndexedDB.
 
 ## 🛠️ Tech Stack
 
-- **Frontend**: React 18, TypeScript, Vite
-- **Hardware Access**: MediaDevices API (Camera/Torch), Web Bluetooth API
-- **Storage**: IndexedDB
-- **UI**: Tailwind CSS
+- **Core**: React 19, TypeScript, Vite
+- **UI/UX**: Tailwind CSS, Lucide Icons, Recharts (Real-time graphing)
+- **Hardware Access**: 
+  - `navigator.bluetooth` (Web Bluetooth API)
+  - `navigator.mediaDevices` (Camera/Flash)
+  - `navigator.geolocation` (GPS)
+  - `navigator.getBattery` (Power Management)
+- **Security**: Web Crypto API (AES-GCM), IndexedDB
 
 ## 🚀 Getting Started
 
 ### Prerequisites
-- Node.js (v16 or higher)
-- A device with a camera and flash.
-- A browser that supports **Web Bluetooth** (Chrome on Android/Desktop, Edge, Bluefy on iOS) is required for the signal scanner feature.
+- Node.js (v18 or higher)
+- A modern browser with hardware API support (Chrome/Edge on Android/Desktop). 
+- *Note: iOS Web Bluetooth support requires specific browsers like Bluefy.*
 
 ### Installation
 
@@ -54,19 +65,15 @@ Unlike "magic" detector apps, SkimGuard provides a rigorous **Physical Inspectio
 4. **Access the App**
    Open the URL provided in the terminal (typically `http://localhost:5173`).
 
-## 📖 How to Use
+## 📖 Operational Guide
 
-1. **Start Inspection**: Open the scanner.
-2. **Visual Check**: 
-   - Use the **Flashlight** icon to illuminate the card slot.
-   - Use the **Zoom Slider** to check for glue or misalignment.
-3. **Signal Check**: 
-   - Tap **SCAN BLE** to search for nearby unknown Bluetooth devices.
-4. **Physical Check**: 
-   - Follow the on-screen checklist. 
-   - Wiggle the reader. Check the keypad.
-   - Mark any issues found.
-5. **Report**: Save the inspection. The app will calculate a risk score based on your findings.
+1. **Dashboard**: Check system status. Ensure "Live Monitoring" is active.
+2. **Scanner**: 
+   - **Visual**: Use the HUD to check Surface Reflection Index (SRI). High SRI (>85%) suggests tape or plastic overlays.
+   - **RF Scan**: Activate the Bluetooth scanner. Use **Settings** to toggle "Smart Filter" if you suspect a non-standard device.
+3. **Physical Check**: Complete the interactive checklist (Wiggle Test, Alignment).
+4. **Evidence**: Capture a snapshot. The app calculates a risk score (0-100%).
+5. **Review**: Analyze the log in the encrypted vault. Export PDF reports for verified threats.
 
 ## ⚠️ Disclaimer
 
