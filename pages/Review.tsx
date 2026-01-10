@@ -3,25 +3,33 @@ import { getDetections, updateDetectionStatus } from '../services/db';
 import { DetectionRecord, DetectionStatus } from '../types';
 import { generateAuthorityReport } from '../services/reportGenerator';
 import { TrustAuthority } from '../services/trustLayer';
-import { FileDown, Search, AlertCircle, CheckCircle2, ChevronRight, ChevronDown, SlidersHorizontal, Lock, Share2, ShieldAlert } from 'lucide-react';
+import { FileDown, Search, AlertCircle, CheckCircle2, ChevronRight, ChevronDown, SlidersHorizontal, Lock, Share2, ShieldAlert, RefreshCw } from 'lucide-react';
 
 const Review: React.FC = () => {
   const [detections, setDetections] = useState<DetectionRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
 
   useEffect(() => {
     loadDetections();
+    // Real-time polling for new records
+    const interval = setInterval(() => {
+        loadDetections(false);
+    }, 3000);
+    
+    return () => clearInterval(interval);
   }, []);
 
-  const loadDetections = async () => {
-    setLoading(true);
+  const loadDetections = async (showLoading = true) => {
+    if (showLoading) setLoading(true);
     try {
       const data = await getDetections();
       setDetections(data);
+      setLastUpdated(new Date());
     } catch (err) {
       console.error("Failed to load detections", err);
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   };
 
@@ -65,7 +73,7 @@ const Review: React.FC = () => {
              }
              
              await updateDetectionStatus(record.id, DetectionStatus.CONFIRMED);
-             await loadDetections(); // Refresh list
+             await loadDetections(); // Refresh list immediately
           } catch (e) {
              alert("Failed to confirm incident.");
           }
@@ -78,7 +86,13 @@ const Review: React.FC = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-           <h2 className="text-xl font-bold text-white">Recent Scan Activity</h2>
+           <div className="flex items-center space-x-2">
+               <h2 className="text-xl font-bold text-white">Recent Scan Activity</h2>
+               <span className="flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-2 w-2 rounded-full bg-primary opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+               </span>
+           </div>
            <p className="text-sm text-slate-400">Audit log of all manual and automated inspection events.</p>
         </div>
         <div className="flex space-x-2">
@@ -99,8 +113,9 @@ const Review: React.FC = () => {
         </div>
         
         {/* Mobile Header */}
-        <div className="md:hidden p-4 border-b border-border bg-slate-900/50 text-xs font-bold text-slate-500 uppercase tracking-wider">
-           Log Entries
+        <div className="md:hidden p-4 border-b border-border bg-slate-900/50 text-xs font-bold text-slate-500 uppercase tracking-wider flex justify-between items-center">
+           <span>Log Entries</span>
+           <span className="text-[10px] font-mono font-normal">Updated: {lastUpdated.toLocaleTimeString()}</span>
         </div>
 
         <div className="divide-y divide-border">
@@ -124,7 +139,7 @@ const Review: React.FC = () => {
       </div>
       
       <div className="text-xs text-slate-500 flex justify-between items-center">
-         <span>Showing {detections.length} of {detections.length} events</span>
+         <span>Showing {detections.length} events</span>
          <span className="flex items-center"><Lock className="w-3 h-3 mr-1" /> Encrypted Local Vault</span>
       </div>
     </div>

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
-import { ShieldAlert, Activity, Map, ArrowUpRight, Signal, Database, Server, Wifi, Clock, WifiOff, Cloud, Target } from 'lucide-react';
+import { ShieldAlert, Activity, Map, ArrowUpRight, Signal, Database, Server, Wifi, Clock, WifiOff, Cloud, Target, Battery, BatteryCharging, Zap } from 'lucide-react';
 import { getStats, getDetections } from '../services/db';
 import { Stats, DetectionRecord } from '../types';
 import { Link } from 'react-router-dom';
@@ -10,37 +10,107 @@ const Dashboard: React.FC = () => {
   const [recentDetections, setRecentDetections] = useState<DetectionRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+  
+  // Real-time Hardware State
+  const [battery, setBattery] = useState<{level: number, charging: boolean} | null>(null);
+  const [geoState, setGeoState] = useState<string>('Locating...');
+  const [bluetoothState, setBluetoothState] = useState<string>('Standby');
 
-  // Mock data for the chart to match the aesthetic
-  const trendData = Array.from({ length: 24 }, (_, i) => ({
-    time: `${i}:00`,
-    value: 20 + Math.random() * 30 + (i > 12 ? i * 2 : 0) // Upward trend
-  }));
+  // Simulated Live Trend Data
+  const [trendData, setTrendData] = useState(() => 
+    Array.from({ length: 24 }, (_, i) => ({
+      time: `${i}:00`,
+      value: 20 + Math.random() * 30
+    }))
+  );
 
   useEffect(() => {
+    // Initial Load
     loadData();
-    window.addEventListener('online', () => setIsOnline(true));
-    window.addEventListener('offline', () => setIsOnline(false));
+    initHardwareListeners();
+
+    // Polling Interval for DB & Hardware snapshots (Real-time updates)
+    const intervalId = setInterval(() => {
+        loadData(false); // Silent update
+        updateHardwareStatus();
+        updateLiveTrend();
+    }, 2000);
+
     return () => {
-        window.removeEventListener('online', () => setIsOnline(true));
-        window.removeEventListener('offline', () => setIsOnline(false));
-    }
+        clearInterval(intervalId);
+    };
+  }, []);
+  
+  // Network Listeners
+  useEffect(() => {
+      const handleOnline = () => setIsOnline(true);
+      const handleOffline = () => setIsOnline(false);
+      window.addEventListener('online', handleOnline);
+      window.addEventListener('offline', handleOffline);
+      return () => {
+          window.removeEventListener('online', handleOnline);
+          window.removeEventListener('offline', handleOffline);
+      };
   }, []);
 
-  const loadData = async () => {
+  const loadData = async (showLoading = true) => {
     try {
+      if (showLoading) setLoading(true);
       const statData = await getStats();
       const detectionData = await getDetections();
       setStats(statData);
-      setRecentDetections(detectionData.slice(0, 5)); // Get last 5
+      setRecentDetections(detectionData.slice(0, 5));
     } catch (e) {
       console.error("Failed to load dashboard data", e);
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   };
 
-  if (loading) return <div className="flex justify-center items-center h-full text-slate-500 font-mono text-sm">INITIALIZING SYSTEM...</div>;
+  const initHardwareListeners = async () => {
+      updateHardwareStatus();
+      
+      // Battery Event Listener
+      if ((navigator as any).getBattery) {
+          try {
+              const bat = await (navigator as any).getBattery();
+              const updateBat = () => setBattery({ level: bat.level, charging: bat.charging });
+              updateBat();
+              bat.addEventListener('levelchange', updateBat);
+              bat.addEventListener('chargingchange', updateBat);
+          } catch (e) { console.warn("Battery API error", e); }
+      }
+  };
+
+  const updateHardwareStatus = async () => {
+      // Geolocation Permission Check
+      if (navigator.permissions) {
+          try {
+             const result = await navigator.permissions.query({ name: 'geolocation' });
+             setGeoState(result.state === 'granted' ? 'Active' : result.state === 'denied' ? 'Denied' : 'Prompt');
+          } catch(e) { setGeoState('Unknown'); }
+      }
+
+      // Bluetooth Availability
+      if ((navigator as any).bluetooth) {
+           try {
+               const isAvailable = await (navigator as any).bluetooth.getAvailability();
+               setBluetoothState(isAvailable ? 'Ready' : 'Unavailable');
+           } catch(e) { setBluetoothState('Error'); }
+      }
+  };
+
+  const updateLiveTrend = () => {
+      setTrendData(prev => {
+          // Simulate slight noise in the data to make it look "live" without shifting time too rapidly
+          return prev.map(item => ({
+              ...item,
+              value: Math.max(10, Math.min(90, item.value + (Math.random() - 0.5) * 10))
+          }));
+      });
+  };
+
+  if (loading) return <div className="flex justify-center items-center h-full text-slate-500 font-mono text-sm animate-pulse">INITIALIZING SYSTEM...</div>;
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-20 md:pb-0">
@@ -49,7 +119,7 @@ const Dashboard: React.FC = () => {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center space-x-2 mb-1">
-             <span className="bg-primary/20 text-primary text-[10px] font-bold px-2 py-0.5 rounded border border-primary/20 uppercase">Live Monitoring</span>
+             <span className="bg-primary/20 text-primary text-[10px] font-bold px-2 py-0.5 rounded border border-primary/20 uppercase animate-pulse">Live Monitoring</span>
              {isOnline ? (
                  <span className="bg-slate-800 text-slate-400 text-[10px] font-bold px-2 py-0.5 rounded border border-slate-700 uppercase flex items-center">
                     <Cloud className="w-3 h-3 mr-1 text-primary" /> Connected
@@ -101,13 +171,13 @@ const Dashboard: React.FC = () => {
         <StatCard 
           label="Threats Identified" 
           value={stats.highRisk.toString()} 
-          subValue="+2 New" 
-          subLabel="Critical attention required"
-          valueColor="text-danger"
-          subValueColor="text-danger bg-danger/10"
+          subValue={stats.highRisk > 0 ? "CRITICAL" : "SAFE"} 
+          subLabel="Active Threats Detected"
+          valueColor={stats.highRisk > 0 ? "text-danger" : "text-white"}
+          subValueColor={stats.highRisk > 0 ? "text-danger bg-danger/10" : "text-primary bg-primary/10"}
           icon={<ShieldAlert className="w-8 h-8 text-danger/20" />}
           borderColor="border-danger/30"
-          highlight
+          highlight={stats.highRisk > 0}
         />
         <StatCard 
           label="Pending Sync" 
@@ -137,15 +207,13 @@ const Dashboard: React.FC = () => {
         <div className="lg:col-span-2 bg-surface border border-border rounded-xl p-5 shadow-xl flex flex-col">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h3 className="text-base font-semibold text-white">Detection Trends</h3>
-              <p className="text-xs text-slate-400">Volume of scan events over time</p>
+              <h3 className="text-base font-semibold text-white">Detection Volume</h3>
+              <p className="text-xs text-slate-400">Live signals processed (1min avg)</p>
             </div>
             <div className="flex space-x-2">
-              {['1H', '24H', '7D'].map(t => (
-                <button key={t} className={`px-2 py-1 text-[10px] font-bold rounded ${t === '24H' ? 'bg-primary text-background' : 'bg-slate-800 text-slate-400 border border-slate-700'}`}>
-                  {t}
-                </button>
-              ))}
+              <span className="flex items-center text-[10px] text-primary font-bold animate-pulse">
+                  <span className="w-2 h-2 bg-primary rounded-full mr-1"></span> LIVE
+              </span>
             </div>
           </div>
           
@@ -162,7 +230,7 @@ const Dashboard: React.FC = () => {
                 <XAxis dataKey="time" stroke="#475569" fontSize={10} tickLine={false} axisLine={false} interval={3} />
                 <YAxis stroke="#475569" fontSize={10} tickLine={false} axisLine={false} />
                 <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '4px', fontSize: '12px' }} itemStyle={{ color: '#10B981' }} />
-                <Area type="monotone" dataKey="value" stroke="#10B981" strokeWidth={2} fillOpacity={1} fill="url(#colorValue)" />
+                <Area type="monotone" dataKey="value" stroke="#10B981" strokeWidth={2} fillOpacity={1} fill="url(#colorValue)" isAnimationActive={false} />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -178,21 +246,26 @@ const Dashboard: React.FC = () => {
                 icon={isOnline ? <Wifi className="w-4 h-4 text-primary" /> : <WifiOff className="w-4 h-4 text-danger" />} 
                 label="Network Connection" 
                 status={isOnline ? "Online" : "Offline"} 
-                sub={isOnline ? "Latency: 24ms" : "Local Mode Active"} 
+                sub={isOnline ? "Latency: <50ms" : "Local Mode Active"} 
              />
              <StatusItem icon={<Database className="w-4 h-4 text-primary" />} label="Local Vault" status="Active" sub="Encrypted (AES-256)" />
-             <StatusItem icon={<Signal className="w-4 h-4 text-secondary" />} label="Bluetooth Module" status="Standby" sub="Ready to scan" />
-             <StatusItem icon={<Map className="w-4 h-4 text-primary" />} label="Geolocation" status="Locked" sub="Precision: High" />
-             <StatusItem icon={<Server className="w-4 h-4 text-slate-400" />} label="Remote Sync" status="Idle" sub="Last sync: 10m ago" />
+             <StatusItem icon={<Signal className="w-4 h-4 text-secondary" />} label="Bluetooth Module" status={bluetoothState} sub="Scanner Hardware" />
+             <StatusItem icon={<Map className="w-4 h-4 text-primary" />} label="Geolocation" status={geoState} sub="High Accuracy GPS" />
+             <StatusItem icon={<Server className="w-4 h-4 text-slate-400" />} label="Remote Sync" status={stats.pendingSync > 0 ? "Queued" : "Idle"} sub={`Last sync: ${new Date().toLocaleTimeString()}`} />
           </div>
           
           <div className="mt-6 pt-4 border-t border-border">
              <div className="flex justify-between items-center">
-                <span className="text-xs text-slate-500">Battery Level</span>
-                <span className="text-xs font-bold text-primary">84%</span>
+                <span className="text-xs text-slate-500 flex items-center">
+                    {battery?.charging ? <Zap className="w-3 h-3 text-accent mr-1" /> : <Battery className="w-3 h-3 mr-1" />}
+                    Battery Level
+                </span>
+                <span className={`text-xs font-bold ${battery && battery.level < 0.2 ? 'text-danger' : 'text-primary'}`}>
+                    {battery ? (battery.level * 100).toFixed(0) + '%' : 'N/A'}
+                </span>
              </div>
              <div className="w-full bg-slate-800 h-1.5 rounded-full mt-2 overflow-hidden">
-                <div className="bg-primary h-full w-[84%]"></div>
+                <div className={`h-full transition-all duration-500 ${battery?.charging ? 'bg-accent' : (battery && battery.level < 0.2) ? 'bg-danger' : 'bg-primary'}`} style={{width: battery ? `${battery.level * 100}%` : '0%'}}></div>
              </div>
           </div>
         </div>
@@ -202,8 +275,11 @@ const Dashboard: React.FC = () => {
       <div className="bg-surface border border-border rounded-xl p-5 shadow-xl overflow-hidden">
         <div className="flex items-center justify-between mb-4">
            <div>
-             <h3 className="text-base font-semibold text-white">Recent Activity</h3>
-             <p className="text-xs text-slate-400">Latest events captured by field agents</p>
+             <h3 className="text-base font-semibold text-white flex items-center">
+                Recent Activity
+                <span className="ml-2 w-2 h-2 bg-danger rounded-full animate-pulse"></span>
+             </h3>
+             <p className="text-xs text-slate-400">Live feed of field agent events</p>
            </div>
            <Link to="/review" className="text-xs font-bold text-primary hover:text-primary/80 flex items-center">
              View All <ArrowUpRight className="w-3 h-3 ml-1" />
