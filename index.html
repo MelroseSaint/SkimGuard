@@ -1,28 +1,62 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
-    <meta name="theme-color" content="#0f172a" />
+    <meta name="theme-color" content="#0B1121" />
     <meta name="description" content="SkimGuard - Skimmer Detection Simulation" />
+    <link rel="manifest" href="/manifest.json" />
     <title>SkimGuard</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Inter', 'sans-serif'],
+              mono: ['JetBrains Mono', 'monospace'],
+            },
+            colors: {
+              background: '#0B1121',
+              surface: '#151e32',
+              border: '#2A3441',
+              primary: '#10B981', // Emerald 500
+              secondary: '#06B6D4', // Cyan 500
+              accent: '#F59E0B', // Amber 500
+              danger: '#EF4444', // Red 500
+            }
+          }
+        }
+      }
+    </script>
     <style>
+      body {
+        background-color: #0B1121;
+        color: #e2e8f0;
+      }
       /* Custom scrollbar for dark theme */
       ::-webkit-scrollbar {
-        width: 8px;
-        height: 8px;
+        width: 6px;
+        height: 6px;
       }
       ::-webkit-scrollbar-track {
-        background: #1e293b;
+        background: #0B1121;
       }
       ::-webkit-scrollbar-thumb {
-        background: #475569;
-        border-radius: 4px;
+        background: #334155;
+        border-radius: 3px;
       }
       ::-webkit-scrollbar-thumb:hover {
-        background: #64748b;
+        background: #475569;
+      }
+      .glass-panel {
+        background: rgba(21, 30, 50, 0.7);
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.08);
       }
     </style>
   <script type="importmap">
@@ -36,12 +70,13 @@
     "recharts": "https://esm.sh/recharts@^3.6.0",
     "uuid": "https://esm.sh/uuid@^13.0.0",
     "vite": "https://esm.sh/vite@^7.3.1",
-    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2"
+    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2",
+    "jspdf": "https://esm.sh/jspdf@^2.5.1"
   }
 }
 </script>
 </head>
-  <body class="bg-slate-950 text-slate-200 antialiased overflow-hidden">
+  <body class="bg-background text-slate-300 antialiased overflow-hidden font-sans selection:bg-primary/30">
     <div id="root" class="h-full w-full flex flex-col"></div>
     <script type="module" src="/index.tsx"></script>
   </body>

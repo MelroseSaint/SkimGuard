@@ -14,10 +14,15 @@ root.render(
   </React.StrictMode>
 );
 
-// Register service worker if available (mock implementation for this environment)
+// Register service worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    // In a real build, this would point to sw.js
-    console.log('Service Worker registration skipped for this demo environment.');
+    navigator.serviceWorker.register('/sw.js')
+      .then(registration => {
+        console.log('SW registered: ', registration);
+      })
+      .catch(registrationError => {
+        console.log('SW registration failed: ', registrationError);
+      });
   });
 }

@@ -1,8 +1,8 @@
-import { AnalysisResult, InspectionChecklist } from "../types";
+import { AnalysisResult, InspectionChecklist, DeviceLog } from "../types";
 
 // Deterministic Risk Engine
 // Calculates risk based purely on physical inspection data
-export const calculateRisk = (checklist: InspectionChecklist, detectedDevices: string[] = []): AnalysisResult => {
+export const calculateRisk = (checklist: InspectionChecklist, detectedDevices: DeviceLog[] = []): AnalysisResult => {
   let score = 0;
   
   // Weighting logic based on security research
@@ -10,7 +10,10 @@ export const calculateRisk = (checklist: InspectionChecklist, detectedDevices: s
   if (checklist.mismatchedColors) score += 15;
   if (checklist.keypadObstruction) score += 20;
   if (checklist.hiddenCamera) score += 50;
-  if (checklist.bluetoothSignal || detectedDevices.length > 0) score += 40;
+  
+  // Risk if Bluetooth signal is checked manually OR if we found threats in the list
+  const hasThreats = detectedDevices.some(d => d.threatType && d.threatType !== 'Unknown');
+  if (checklist.bluetoothSignal || hasThreats) score += 40;
 
   // Cap at 100
   score = Math.min(score, 100);

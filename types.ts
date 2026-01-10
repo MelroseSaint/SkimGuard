@@ -5,6 +5,12 @@ export enum DetectionStatus {
   PUBLISHED = 'PUBLISHED',
 }
 
+export enum SyncStatus {
+  SYNCED = 'SYNCED',
+  PENDING = 'PENDING',
+  FAILED = 'FAILED',
+}
+
 export interface InspectionChecklist {
   looseParts: boolean;
   mismatchedColors: boolean;
@@ -13,11 +19,19 @@ export interface InspectionChecklist {
   bluetoothSignal: boolean;
 }
 
+export interface DeviceLog {
+    id: string;
+    name: string;
+    rssi: number;
+    threatType?: string;
+    timestamp: number;
+}
+
 export interface AnalysisResult {
   isSuspicious: boolean;
   riskScore: number; // 0-100
   checklist: InspectionChecklist;
-  detectedDevices?: string[]; // Bluetooth device names
+  detectedDevices?: DeviceLog[]; // Detailed logs
 }
 
 export interface DetectionRecord {
@@ -27,14 +41,18 @@ export interface DetectionRecord {
   location?: {
     latitude: number;
     longitude: number;
+    accuracy?: number;
   };
   analysis: AnalysisResult;
   status: DetectionStatus;
+  syncStatus: SyncStatus;
   notes?: string;
+  deviceType?: string;
 }
 
 export interface Stats {
   totalScans: number;
   highRisk: number;
   confirmed: number;
+  pendingSync: number;
 }
