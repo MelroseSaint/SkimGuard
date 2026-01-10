@@ -152,7 +152,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
                   </div>
                   <div className="p-2 bg-slate-900/50 border-t border-border text-center">
-                    <Link to="/settings" onClick={() => setShowNotifications(false)} className="text-xs text-primary hover:text-primary/80 font-bold">View System Logs</Link>
+                    <Link to="/review" onClick={() => setShowNotifications(false)} className="text-xs text-primary hover:text-primary/80 font-bold">View System Logs</Link>
                   </div>
                 </div>
               )}

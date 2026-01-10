@@ -3,7 +3,7 @@ import { getDetections, updateDetectionStatus } from '../services/db';
 import { DetectionRecord, DetectionStatus } from '../types';
 import { generateAuthorityReport } from '../services/reportGenerator';
 import { TrustAuthority } from '../services/trustLayer';
-import { FileDown, Search, AlertCircle, CheckCircle2, ChevronRight, SlidersHorizontal, Lock, Share2, ShieldAlert } from 'lucide-react';
+import { FileDown, Search, AlertCircle, CheckCircle2, ChevronRight, ChevronDown, SlidersHorizontal, Lock, Share2, ShieldAlert } from 'lucide-react';
 
 const Review: React.FC = () => {
   const [detections, setDetections] = useState<DetectionRecord[]>([]);
@@ -131,6 +131,7 @@ const DetectionRow: React.FC<{
     onConfirm: () => void;
     onShare: () => void;
 }> = ({ record, onExport, onConfirm, onShare }) => {
+  const [expanded, setExpanded] = useState(false);
   const isHighRisk = record.analysis.isSuspicious;
   const isConfirmed = record.status === DetectionStatus.CONFIRMED;
   const isPending = record.status === DetectionStatus.PENDING;
@@ -138,87 +139,191 @@ const DetectionRow: React.FC<{
   const date = new Date(record.timestamp);
   
   return (
-    <div className="grid grid-cols-12 gap-4 p-4 items-center hover:bg-slate-800/30 transition-colors group">
-      {/* Timestamp & ID */}
-      <div className="col-span-3">
-        <div className="text-xs text-slate-400 font-mono mb-0.5">
-          {date.toISOString().split('T')[0]} <span className="text-slate-600">|</span> {date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'})}
+    <>
+      <div 
+        className={`grid grid-cols-12 gap-4 p-4 items-center hover:bg-slate-800/30 transition-colors group cursor-pointer ${expanded ? 'bg-slate-800/50' : ''}`}
+        onClick={() => setExpanded(!expanded)}
+      >
+        {/* Timestamp & ID */}
+        <div className="col-span-3">
+          <div className="text-xs text-slate-400 font-mono mb-0.5">
+            {date.toISOString().split('T')[0]} <span className="text-slate-600">|</span> {date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'})}
+          </div>
+          <div className="text-sm font-bold text-white font-mono">
+            {record.deviceType || "TERM-8842-X"}
+          </div>
         </div>
-        <div className="text-sm font-bold text-white font-mono">
-          {record.deviceType || "TERM-8842-X"}
+
+        {/* Threat Type */}
+        <div className="col-span-3">
+          {isConfirmed ? (
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-bold bg-danger/10 text-danger border border-danger/20">
+              <AlertCircle className="w-3 h-3 mr-1.5" />
+              CONFIRMED THREAT
+            </span>
+          ) : isPending ? (
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-bold bg-accent/10 text-accent border border-accent/20 animate-pulse">
+              <ShieldAlert className="w-3 h-3 mr-1.5" />
+              ACTION REQUIRED
+            </span>
+          ) : (
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-bold bg-slate-800 text-slate-400 border border-slate-700">
+              <CheckCircle2 className="w-3 h-3 mr-1.5" />
+              Verified Safe
+            </span>
+          )}
+        </div>
+
+        {/* Confidence Bar */}
+        <div className="col-span-3 pr-4">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className={`text-xs font-mono font-bold ${isHighRisk ? 'text-danger' : 'text-primary'}`}>
+              {score.toFixed(1)}%
+            </span>
+          </div>
+          <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+            <div 
+              className={`h-full rounded-full ${isHighRisk ? 'bg-danger' : 'bg-primary'}`} 
+              style={{ width: `${score}%` }}
+            ></div>
+          </div>
+        </div>
+
+        {/* Action */}
+        <div className="col-span-3 flex justify-end space-x-2">
+          {isPending && (
+              <button 
+                onClick={(e) => { e.stopPropagation(); onConfirm(); }}
+                className="px-3 py-1 bg-danger hover:bg-danger/90 text-white text-xs font-bold rounded flex items-center shadow-lg shadow-danger/20"
+              >
+                Confirm
+              </button>
+          )}
+          
+          {isConfirmed && (
+              <>
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); onExport(); }}
+                    className="p-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded text-slate-300 hover:text-white"
+                    title="Export Authority PDF"
+                  >
+                    <FileDown className="w-4 h-4" />
+                  </button>
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); onShare(); }}
+                    className="p-2 bg-primary/10 hover:bg-primary/20 border border-primary/20 rounded text-primary hover:text-white"
+                    title="Share with Authority"
+                  >
+                    <Share2 className="w-4 h-4" />
+                  </button>
+              </>
+          )}
+          
+          <button 
+            onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
+            className="p-2 hover:bg-slate-700 rounded text-slate-400 hover:text-white opacity-50 hover:opacity-100"
+          >
+            {expanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          </button>
         </div>
       </div>
 
-      {/* Threat Type */}
-      <div className="col-span-3">
-        {isConfirmed ? (
-           <span className="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-bold bg-danger/10 text-danger border border-danger/20">
-             <AlertCircle className="w-3 h-3 mr-1.5" />
-             CONFIRMED THREAT
-           </span>
-        ) : isPending ? (
-           <span className="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-bold bg-accent/10 text-accent border border-accent/20 animate-pulse">
-             <ShieldAlert className="w-3 h-3 mr-1.5" />
-             ACTION REQUIRED
-           </span>
-        ) : (
-           <span className="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-bold bg-slate-800 text-slate-400 border border-slate-700">
-             <CheckCircle2 className="w-3 h-3 mr-1.5" />
-             Verified Safe
-           </span>
-        )}
-      </div>
+      {/* Expanded Details */}
+      {expanded && (
+       <div className="bg-slate-900/50 border-b border-border p-6 animate-in slide-in-from-top-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+             {/* Left Column: Evidence & Location */}
+             <div>
+                <h4 className="text-xs font-bold text-slate-500 uppercase mb-3">Location & Device Identity</h4>
+                
+                <div className="bg-background rounded border border-border p-3 mb-4 space-y-2">
+                   <div className="flex justify-between text-sm">
+                      <span className="text-slate-400">Device Type:</span>
+                      <span className="text-white font-mono">{record.deviceType || "Unknown"}</span>
+                   </div>
+                   <div className="flex justify-between text-sm">
+                      <span className="text-slate-400">Record ID:</span>
+                      <span className="text-white font-mono text-xs">{record.id}</span>
+                   </div>
+                   <div className="border-t border-slate-700 my-2"></div>
+                   {record.location ? (
+                       <>
+                         <div className="flex justify-between text-sm">
+                            <span className="text-slate-400">Latitude:</span>
+                            <span className="text-white font-mono">{record.location.latitude.toFixed(6)}</span>
+                         </div>
+                         <div className="flex justify-between text-sm">
+                            <span className="text-slate-400">Longitude:</span>
+                            <span className="text-white font-mono">{record.location.longitude.toFixed(6)}</span>
+                         </div>
+                         <div className="flex justify-between text-sm">
+                            <span className="text-slate-400">Accuracy:</span>
+                            <span className="text-primary font-mono">±{record.location.accuracy?.toFixed(1) || 0}m</span>
+                         </div>
+                       </>
+                   ) : (
+                       <div className="text-sm text-danger flex items-center">
+                          <AlertCircle className="w-4 h-4 mr-2" /> GPS Data Missing
+                       </div>
+                   )}
+                </div>
 
-      {/* Confidence Bar */}
-      <div className="col-span-3 pr-4">
-        <div className="flex items-center justify-between mb-1.5">
-           <span className={`text-xs font-mono font-bold ${isHighRisk ? 'text-danger' : 'text-primary'}`}>
-             {score.toFixed(1)}%
-           </span>
-        </div>
-        <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
-           <div 
-             className={`h-full rounded-full ${isHighRisk ? 'bg-danger' : 'bg-primary'}`} 
-             style={{ width: `${score}%` }}
-           ></div>
-        </div>
-      </div>
+                {record.imageData && (
+                    <div>
+                        <h4 className="text-xs font-bold text-slate-500 uppercase mb-3">Visual Evidence</h4>
+                        <div className="rounded-lg overflow-hidden border border-border relative bg-black">
+                            <img src={record.imageData} className="w-full h-48 object-contain opacity-80 hover:opacity-100 transition-opacity" />
+                            <div className="absolute bottom-0 inset-x-0 bg-black/60 p-2 text-xs font-mono text-white truncate">
+                                HASH: {record.id.split('-')[0]}...
+                            </div>
+                        </div>
+                    </div>
+                )}
+             </div>
 
-      {/* Action */}
-      <div className="col-span-3 flex justify-end space-x-2">
-        {isPending && (
-            <button 
-              onClick={onConfirm}
-              className="px-3 py-1 bg-danger hover:bg-danger/90 text-white text-xs font-bold rounded flex items-center shadow-lg shadow-danger/20"
-            >
-              Confirm
-            </button>
-        )}
-        
-        {isConfirmed && (
-            <>
-                <button 
-                  onClick={onExport}
-                  className="p-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded text-slate-300 hover:text-white"
-                  title="Export Authority PDF"
-                >
-                  <FileDown className="w-4 h-4" />
-                </button>
-                <button 
-                  onClick={onShare}
-                  className="p-2 bg-primary/10 hover:bg-primary/20 border border-primary/20 rounded text-primary hover:text-white"
-                  title="Share with Authority"
-                >
-                  <Share2 className="w-4 h-4" />
-                </button>
-            </>
-        )}
-        
-        <button className="p-2 hover:bg-slate-700 rounded text-slate-400 hover:text-white opacity-50 hover:opacity-100">
-           <ChevronRight className="w-4 h-4" />
-        </button>
-      </div>
-    </div>
+             {/* Right Column: Analysis Details */}
+             <div>
+                <h4 className="text-xs font-bold text-slate-500 uppercase mb-3">Forensic Analysis</h4>
+                
+                <div className="space-y-2 mb-6">
+                    {Object.entries(record.analysis.checklist).map(([key, val]) => (
+                        <div key={key} className="flex items-center justify-between p-2 rounded bg-background border border-border">
+                            <span className="text-sm text-slate-300 capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}</span>
+                            {val ? (
+                                <span className="text-xs font-bold text-danger bg-danger/10 px-2 py-0.5 rounded border border-danger/20">DETECTED</span>
+                            ) : (
+                                <span className="text-xs font-bold text-slate-500 bg-slate-800 px-2 py-0.5 rounded">CLEARED</span>
+                            )}
+                        </div>
+                    ))}
+                </div>
+
+                <h4 className="text-xs font-bold text-slate-500 uppercase mb-3">Wireless Signature</h4>
+                {record.analysis.detectedDevices && record.analysis.detectedDevices.length > 0 ? (
+                    <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                        {record.analysis.detectedDevices.map((dev: any, i: number) => (
+                            <div key={i} className="text-xs p-2 bg-background border border-border rounded flex justify-between items-center">
+                                <div>
+                                    <div className="font-bold text-white">{dev.name || "Unknown"}</div>
+                                    <div className="font-mono text-slate-500">{dev.id}</div>
+                                </div>
+                                <div className="text-right">
+                                    <div className={`font-mono font-bold ${dev.threatType ? 'text-danger' : 'text-slate-400'}`}>{dev.rssi} dBm</div>
+                                    {dev.threatType && <div className="text-[10px] text-danger font-bold">{dev.threatType}</div>}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="p-3 border border-dashed border-slate-700 rounded text-center text-xs text-slate-500">
+                        No wireless signals captured during scan.
+                    </div>
+                )}
+             </div>
+          </div>
+       </div>
+      )}
+    </>
   );
 };
 
