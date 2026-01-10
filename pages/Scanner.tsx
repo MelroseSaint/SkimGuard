@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { Camera, Save, TriangleAlert, Zap, Scan, Radio, Target, RefreshCw, Activity, XCircle, CheckCircle, Flag, SignalHigh, SignalMedium, SignalLow, Fingerprint, Info, Battery, MapPin, ChevronUp, ChevronDown, Sun } from 'lucide-react';
+import { Camera, TriangleAlert, Zap, Scan, Radio, Target, RefreshCw, Activity, XCircle, CheckCircle, Flag, SignalHigh, SignalMedium, SignalLow, Fingerprint, Info, Battery, MapPin, ChevronDown, Sun } from 'lucide-react';
 import { calculateRisk } from '../services/gemini';
 import { TrustAuthority } from '../services/trustLayer';
 import { DetectionRecord, DetectionStatus, InspectionChecklist, SyncStatus, DeviceLog } from '../types';
@@ -591,7 +591,6 @@ const Scanner: React.FC = () => {
              setChecklist={setChecklist}
              scanBluetooth={scanBluetooth}
              isScanning={isScanning}
-             initiateReview={initiateReview}
              rssiThreshold={rssiThreshold}
           />
         </div>
@@ -612,7 +611,6 @@ const Scanner: React.FC = () => {
                         setChecklist={setChecklist}
                         scanBluetooth={scanBluetooth}
                         isScanning={isScanning}
-                        initiateReview={initiateReview}
                         rssiThreshold={rssiThreshold}
                     />
                 </div>
@@ -711,7 +709,7 @@ const Scanner: React.FC = () => {
   );
 };
 
-const SidebarContent: React.FC<any> = ({ reflectionIndex, signalStrength, btList, checklist, setChecklist, scanBluetooth, isScanning, initiateReview, rssiThreshold }) => (
+const SidebarContent: React.FC<any> = ({ reflectionIndex, signalStrength, btList, checklist, setChecklist, scanBluetooth, isScanning, rssiThreshold }) => (
   <>
     <div className="p-4 border-b border-border">
       <h3 className="text-xs font-bold text-slate-400 uppercase mb-3 flex items-center">

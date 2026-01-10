@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { NavLink, Link } from 'react-router-dom';
-import { ShieldCheck, Activity, Search, Database, Settings, BookOpen, Menu, X, Bell, User, Shield, AlertTriangle, Lock, Globe, Unlock, Fingerprint, Router, Siren } from 'lucide-react';
+import { ShieldCheck, Activity, Search, Database, Settings, BookOpen, Menu, X, Bell, User, Shield, AlertTriangle, Lock, Globe, Unlock, Router, Siren } from 'lucide-react';
 import { MDMService } from '../services/mdm';
 import { ComplianceStatus } from '../types';
 
