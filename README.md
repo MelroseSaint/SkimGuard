@@ -20,7 +20,7 @@ Unlike "magic" detector apps, SkimGuard provides a rigorous **Physical Inspectio
 
 ## 🛠️ Tech Stack
 
-- **Frontend**: React 19, TypeScript, Next.js (Concepts)
+- **Frontend**: React 18, TypeScript, Vite
 - **Hardware Access**: MediaDevices API (Camera/Torch), Web Bluetooth API
 - **Storage**: IndexedDB
 - **UI**: Tailwind CSS
@@ -28,6 +28,7 @@ Unlike "magic" detector apps, SkimGuard provides a rigorous **Physical Inspectio
 ## 🚀 Getting Started
 
 ### Prerequisites
+- Node.js (v16 or higher)
 - A device with a camera and flash.
 - A browser that supports **Web Bluetooth** (Chrome on Android/Desktop, Edge, Bluefy on iOS) is required for the signal scanner feature.
 
@@ -39,16 +40,19 @@ Unlike "magic" detector apps, SkimGuard provides a rigorous **Physical Inspectio
    cd SkimmerDetection
    ```
 
-2. **Running the App**
-   Serve the files using a secure context (HTTPS or localhost). Web Bluetooth and Camera require secure contexts.
-
-   Using Python:
+2. **Install Dependencies**
    ```bash
-   python3 -m http.server 8000
+   npm install
    ```
 
-3. **Access the App**
-   Open `http://localhost:8000`.
+3. **Running the App**
+   Start the development server:
+   ```bash
+   npm run dev
+   ```
+
+4. **Access the App**
+   Open the URL provided in the terminal (typically `http://localhost:5173`).
 
 ## 📖 How to Use
 
