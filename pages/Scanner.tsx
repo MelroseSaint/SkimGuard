@@ -181,6 +181,7 @@ const Scanner: React.FC = () => {
     if (isInspecting) {
       renderLoop();
       const interval = setInterval(() => {
+         // Fix: remove unused 'prev' argument
          setOverlayThickness(() => Math.max(0, 0.4 + (Math.random() * 0.1 - 0.05)));
       }, 500);
       return () => {
@@ -283,8 +284,24 @@ const Scanner: React.FC = () => {
             const threatInfo = identifyDevice(name);
             const isThreat = !!threatInfo;
 
+            // Update UI immediately with initial data
+            setBtList(prev => {
+                 const clean = prev.filter(d => d.id !== id);
+                 return [{
+                    id: id,
+                    name: name,
+                    rssi: -100, 
+                    smoothRssi: -100,
+                    timestamp: Date.now(),
+                    isThreat: isThreat,
+                    threatType: threatInfo?.type,
+                    riskLevel: threatInfo?.risk
+                 }, ...clean];
+            });
+
             const onAdReceived = (event: any) => {
                 const rawRssi = event.rssi;
+                if (typeof rawRssi !== 'number') return;
                 
                 setSignalStrength(prev => {
                     const filtered = filterRSSI(rawRssi, prev);
@@ -294,9 +311,9 @@ const Scanner: React.FC = () => {
                     return filtered;
                 });
 
-                setBtList(prev => {
-                    const existingIdx = prev.findIndex(d => d.id === id);
-                    const previousItem = existingIdx >= 0 ? prev[existingIdx] : null;
+                setBtList(prevList => {
+                    const existingIdx = prevList.findIndex(d => d.id === id);
+                    const previousItem = existingIdx >= 0 ? prevList[existingIdx] : null;
                     const prevSmooth = previousItem ? previousItem.smoothRssi : rawRssi;
                     const newSmooth = filterRSSI(rawRssi, prevSmooth);
 
@@ -311,7 +328,7 @@ const Scanner: React.FC = () => {
                         riskLevel: threatInfo?.risk
                     };
 
-                    const newList = [...prev];
+                    const newList = [...prevList];
                     if (existingIdx >= 0) {
                         newList[existingIdx] = newItem;
                     } else {
@@ -323,25 +340,17 @@ const Scanner: React.FC = () => {
 
             device.addEventListener('advertisementreceived', onAdReceived);
 
-            if (device.watchAdvertisements) {
-                await device.watchAdvertisements({ signal: abortControllerRef.current.signal });
-            } else {
-                alert("Real-time signal tracking not supported by this browser.");
+            try {
+                if (device.watchAdvertisements) {
+                    await device.watchAdvertisements({ signal: abortControllerRef.current.signal });
+                } else {
+                    console.warn("watchAdvertisements API not found on device object");
+                }
+            } catch (err) {
+                console.warn("Failed to watch advertisements:", err);
+                // We don't alert here to avoid interrupting the user flow, 
+                // since we already added the device to the list.
             }
-
-            setBtList(prev => {
-                 const clean = prev.filter(d => d.id !== id);
-                 return [{
-                    id: id,
-                    name: name,
-                    rssi: -100, 
-                    smoothRssi: -100,
-                    timestamp: Date.now(),
-                    isThreat: isThreat,
-                    threatType: threatInfo?.type,
-                    riskLevel: threatInfo?.risk
-                 }, ...clean];
-            });
         }
     } catch (error) {
         console.log("Bluetooth scan flow ended:", error);
