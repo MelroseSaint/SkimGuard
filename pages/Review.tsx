@@ -3,7 +3,7 @@ import { getDetections, updateDetectionStatus } from '../services/db';
 import { DetectionRecord, DetectionStatus } from '../types';
 import { generateAuthorityReport } from '../services/reportGenerator';
 import { TrustAuthority } from '../services/trustLayer';
-import { FileDown, Search, AlertCircle, CheckCircle2, ChevronRight, ChevronDown, SlidersHorizontal, Lock, Share2, ShieldAlert } from 'lucide-react';
+import { FileDown, Search, AlertCircle, CheckCircle2, ChevronRight, ChevronDown, SlidersHorizontal, Lock, Share2, ShieldAlert, RefreshCw } from 'lucide-react';
 
 const Review: React.FC = () => {
   const [detections, setDetections] = useState<DetectionRecord[]>([]);
