@@ -7,19 +7,20 @@ It combines **computer vision**, **RF spectral analysis**, and **physical inspec
 ## ✨ Key Capabilities
 
 ### 📡 Real-Time Telemetry
-- **Live Dashboard**: Monitor system health, detection volume trends, and hardware status (Battery, GPS, Network) in real-time.
+- **Live Dashboard**: High-frequency polling (2s intervals) monitors system health, detection volume trends, and hardware status (Battery, GPS, Network) in real-time.
 - **Hardware Integration**: Direct access to device sensors including Magnetometer (simulated via API hooks), Bluetooth Radio, and Camera Torch.
+- **Simulated Trends**: Real-time signal noise simulation in the dashboard for demonstration purposes when hardware is idle.
 
 ### 🔍 Advanced Detection Engine
-- **Bluetooth Smart Filter**: Automatically suppresses known benign devices (Headphones, Smartwatches) to focus on potential threats.
+- **Bluetooth Smart Filter**: Automatically suppresses known benign devices (Headphones, Smartwatches) to focus on potential threats using `THREAT_SIGNATURES`.
 - **Raw Signal Mode**: Toggle filters off to visualize raw RSSI volatility and detect faint signals from deeply embedded skimmers.
-- **Visual Analysis**: Real-time luminance detection to identify glossy overlays or tape residue on card readers.
+- **Visual Analysis**: Real-time luminance detection to identify glossy overlays or tape residue on card readers using HTML5 Canvas pixel analysis.
 
 ### 🏢 Enterprise MDM & Security
 - **Device Management**: Automatic asset tagging and compliance monitoring (Battery levels, Geolocation permission).
 - **Quarantine Protocol**: Locks the interface if security policies (e.g., offline for >24h) are violated.
 - **Remote Wipe Simulation**: Field agents can execute a "Remote Wipe" to instantly purge the local encrypted vault and reset encryption keys.
-- **AES-256 Encryption**: All evidence logs are encrypted at rest using the Web Crypto API.
+- **AES-256 Encryption**: All evidence logs are encrypted at rest using the Web Crypto API (`AES-GCM`).
 
 ### 📝 Forensic Evidence
 - **Chain of Custody**: Generates cryptographically hashed PDF reports for law enforcement handover.
@@ -43,7 +44,7 @@ It combines **computer vision**, **RF spectral analysis**, and **physical inspec
 - A modern browser with hardware API support (Chrome/Edge on Android/Desktop). 
 - *Note: iOS Web Bluetooth support requires specific browsers like Bluefy.*
 
-### Installation
+### Installation & Build
 
 1. **Clone the repository**
    ```bash
@@ -56,14 +57,18 @@ It combines **computer vision**, **RF spectral analysis**, and **physical inspec
    npm install
    ```
 
-3. **Running the App**
-   Start the development server:
+3. **Development Mode**
+   Start the hot-reloading development server:
    ```bash
    npm run dev
    ```
 
-4. **Access the App**
-   Open the URL provided in the terminal (typically `http://localhost:5173`).
+4. **Production Build**
+   Compile TypeScript and optimize assets:
+   ```bash
+   npm run build
+   ```
+   The output will be in the `dist/` directory.
 
 ## 📖 Operational Guide
 
