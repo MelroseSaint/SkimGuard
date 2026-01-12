@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { NavLink, Link } from 'react-router-dom';
-import { ShieldCheck, Activity, Search, Database, Settings, BookOpen, Menu, X, Bell, User, Shield, AlertTriangle, Lock, Globe, Unlock, Router, Siren } from 'lucide-react';
+import { ShieldCheck, Activity, Search, Database, Settings, BookOpen, Menu, X, Bell, User, Shield, AlertTriangle, Lock, Globe, Unlock, Router, Siren, Code } from 'lucide-react';
 import { MDMService } from '../services/mdm';
 import { ComplianceStatus } from '../types';
 
@@ -174,7 +174,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         </nav>
 
         <div className="p-4 border-t border-border">
-          <div className="bg-slate-800/50 rounded-lg p-3 flex items-center space-x-3">
+          <div className="bg-slate-800/50 rounded-lg p-3 flex items-center space-x-3 mb-4">
             <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center border border-slate-600">
               <User className="w-4 h-4 text-slate-300" />
             </div>
@@ -182,6 +182,14 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               <p className="text-xs font-bold text-white">Field Agent</p>
               <p className="text-[10px] text-slate-400">ID: #8842-Alpha</p>
             </div>
+          </div>
+          
+          {/* Developer Attribution */}
+          <div className="text-[10px] text-slate-500 text-center leading-tight">
+             Developed by <br/>
+             <a href="https://darkstackstudiosinc.vercel.app/" target="_blank" rel="noopener noreferrer" className="text-primary hover:text-white transition-colors font-bold mt-1 inline-block">
+               DarkStackStudios
+             </a> / Obscura Code
           </div>
         </div>
       </aside>
@@ -334,7 +342,15 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 <Settings className="w-5 h-5" /> <span>System Config</span>
              </NavLink>
              
-             <button onClick={() => setMobileMenuOpen(false)} className="mt-8 py-3 bg-slate-800 rounded-lg text-slate-400 font-bold flex justify-center">
+             {/* Mobile Drawer Developer Attribution */}
+             <div className="mt-auto pb-8 pt-4 border-t border-slate-800 text-center">
+                <p className="text-xs text-slate-500">SkimGuard Pro v0.1.0</p>
+                <p className="text-[10px] text-slate-600 mt-1">
+                   Developed by <a href="https://darkstackstudiosinc.vercel.app/" target="_blank" rel="noopener noreferrer" className="text-slate-400 underline">DarkStackStudios / Obscura Code</a>
+                </p>
+             </div>
+
+             <button onClick={() => setMobileMenuOpen(false)} className="py-3 bg-slate-800 rounded-lg text-slate-400 font-bold flex justify-center">
                Close Menu
              </button>
            </div>

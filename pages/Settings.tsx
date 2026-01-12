@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Save, Trash2, RefreshCw, Smartphone, Database, Battery, Radio, Lock, Shield, Server, Router, Power, Waves, AlertTriangle, Filter } from 'lucide-react';
+import { Save, Trash2, RefreshCw, Smartphone, Database, Battery, Radio, Lock, Shield, Server, Router, Power, Waves, AlertTriangle, Filter, Code } from 'lucide-react';
 import { syncPendingRecords } from '../services/db';
 import { MDMService } from '../services/mdm';
 import { DeviceIdentity } from '../types';
@@ -313,6 +313,17 @@ const Settings: React.FC = () => {
                    </button>
                 </div>
              </div>
+        </div>
+        
+        {/* Developer Footer */}
+        <div className="text-center pt-8 border-t border-border mt-8 space-y-2">
+             <div className="flex items-center justify-center space-x-2 text-slate-500">
+                <Code className="w-4 h-4" />
+                <span className="text-xs font-mono font-bold uppercase tracking-widest">System Build v0.1.0</span>
+             </div>
+             <p className="text-xs text-slate-500">
+                Engineered by <a href="https://darkstackstudiosinc.vercel.app/" target="_blank" rel="noopener noreferrer" className="text-primary hover:text-white transition-colors">DarkStackStudios</a> / Obscura Code
+             </p>
         </div>
     </div>
   );
