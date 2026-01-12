@@ -159,8 +159,12 @@ const Scanner: React.FC = () => {
         const ctx = canvas.getContext('2d', { willReadFrequently: true });
 
         if (ctx && video.readyState === video.HAVE_ENOUGH_DATA) {
-          canvas.width = video.videoWidth;
-          canvas.height = video.videoHeight;
+          // CRITICAL OPTIMIZATION: Only resize canvas if dimensions differ.
+          // Resizing on every frame forces full buffer reallocation (High CPU).
+          if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
+             canvas.width = video.videoWidth;
+             canvas.height = video.videoHeight;
+          }
           
           ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
@@ -172,7 +176,8 @@ const Scanner: React.FC = () => {
 
           // Real-time Analysis: Calculate Luminance in the ROI (Region of Interest)
           // Analyze center 50x50 pixels for reflection spikes (tape/plastic)
-          if (frameCount % 5 === 0) { // Throttled analysis for performance
+          // Throttled analysis for performance: check every 15 frames (~4 times/sec)
+          if (frameCount % 15 === 0) {
               try {
                   const sampleSize = 50;
                   const sx = x + (boxW - sampleSize) / 2;

@@ -7,14 +7,14 @@ It combines **computer vision**, **RF spectral analysis**, and **physical inspec
 ## ✨ Key Capabilities
 
 ### 📡 Real-Time Telemetry
-- **Live Dashboard**: High-frequency polling (2s intervals) monitors system health, detection volume trends, and hardware status (Battery, GPS, Network) in real-time.
+- **Live Dashboard**: Optimized polling (6s intervals) monitors system health, detection volume trends, and hardware status (Battery, GPS, Network) efficiently.
 - **Hardware Integration**: Direct access to device sensors including Magnetometer (simulated via API hooks), Bluetooth Radio, and Camera Torch.
 - **Simulated Trends**: Real-time signal noise simulation in the dashboard for demonstration purposes when hardware is idle.
 
 ### 🔍 Advanced Detection Engine
 - **Bluetooth Smart Filter**: Automatically suppresses known benign devices (Headphones, Smartwatches) to focus on potential threats using `THREAT_SIGNATURES`.
 - **Raw Signal Mode**: Toggle filters off to visualize raw RSSI volatility and detect faint signals from deeply embedded skimmers.
-- **Visual Analysis**: Real-time luminance detection to identify glossy overlays or tape residue on card readers using HTML5 Canvas pixel analysis.
+- **Visual Analysis**: Real-time luminance detection to identify glossy overlays or tape residue on card readers using HTML5 Canvas pixel analysis (throttled for performance).
 
 ### 🏢 Enterprise MDM & Security
 - **Device Management**: Automatic asset tagging and compliance monitoring (Battery levels, Geolocation permission).

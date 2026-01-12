@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
-import { ShieldAlert, Activity, Map, ArrowUpRight, Signal, Database, Server, Wifi, Clock, WifiOff, Cloud, Target, Battery, Zap } from 'lucide-react';
+import { ShieldAlert, Activity, Map, ArrowUpRight, Signal, Database, Server, Wifi, Clock, WifiOff, Cloud, Target, Battery, Zap, BatteryCharging } from 'lucide-react';
 import { getStats, getDetections } from '../services/db';
 import { Stats, DetectionRecord } from '../types';
 import { Link } from 'react-router-dom';
@@ -30,11 +30,12 @@ const Dashboard: React.FC = () => {
     initHardwareListeners();
 
     // Polling Interval for DB & Hardware snapshots (Real-time updates)
+    // Optimized: Increased interval to 6000ms to reduce CPU load from DB decryption
     const intervalId = setInterval(() => {
         loadData(false); // Silent update
         updateHardwareStatus();
         updateLiveTrend();
-    }, 2000);
+    }, 6000);
 
     return () => {
         clearInterval(intervalId);
@@ -119,7 +120,9 @@ const Dashboard: React.FC = () => {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center space-x-2 mb-1">
-             <span className="bg-primary/20 text-primary text-[10px] font-bold px-2 py-0.5 rounded border border-primary/20 uppercase animate-pulse">Live Monitoring</span>
+             <span className="bg-primary/20 text-primary text-[10px] font-bold px-2 py-0.5 rounded border border-primary/20 uppercase animate-pulse flex items-center w-fit">
+                <Zap className="w-3 h-3 mr-1" /> Live Monitoring
+             </span>
              {isOnline ? (
                  <span className="bg-slate-800 text-slate-400 text-[10px] font-bold px-2 py-0.5 rounded border border-slate-700 uppercase flex items-center">
                     <Cloud className="w-3 h-3 mr-1 text-primary" /> Connected
@@ -257,7 +260,7 @@ const Dashboard: React.FC = () => {
           <div className="mt-6 pt-4 border-t border-border">
              <div className="flex justify-between items-center">
                 <span className="text-xs text-slate-500 flex items-center">
-                    {battery?.charging ? <Zap className="w-3 h-3 text-accent mr-1" /> : <Battery className="w-3 h-3 mr-1" />}
+                    {battery?.charging ? <BatteryCharging className="w-3 h-3 text-accent mr-1" /> : <Battery className="w-3 h-3 mr-1" />}
                     Battery Level
                 </span>
                 <span className={`text-xs font-bold ${battery && battery.level < 0.2 ? 'text-danger' : 'text-primary'}`}>

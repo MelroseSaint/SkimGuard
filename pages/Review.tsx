@@ -3,7 +3,7 @@ import { getDetections, updateDetectionStatus } from '../services/db';
 import { DetectionRecord, DetectionStatus } from '../types';
 import { generateAuthorityReport } from '../services/reportGenerator';
 import { TrustAuthority } from '../services/trustLayer';
-import { FileDown, Search, AlertCircle, CheckCircle2, ChevronRight, ChevronDown, SlidersHorizontal, Lock, Share2, ShieldAlert } from 'lucide-react';
+import { FileDown, Search, AlertCircle, CheckCircle2, ChevronRight, ChevronDown, SlidersHorizontal, Lock, Share2, ShieldAlert, RefreshCw } from 'lucide-react';
 
 const Review: React.FC = () => {
   const [detections, setDetections] = useState<DetectionRecord[]>([]);
@@ -13,9 +13,10 @@ const Review: React.FC = () => {
   useEffect(() => {
     loadDetections();
     // Real-time polling for new records
+    // Optimized: Increased interval to 10000ms to reduce CPU load
     const interval = setInterval(() => {
         loadDetections(false);
-    }, 3000);
+    }, 10000);
     
     return () => clearInterval(interval);
   }, []);
@@ -96,6 +97,10 @@ const Review: React.FC = () => {
            <p className="text-sm text-slate-400">Audit log of all manual and automated inspection events.</p>
         </div>
         <div className="flex space-x-2">
+           <button onClick={() => loadDetections(true)} className="flex items-center space-x-2 px-3 py-2 bg-surface border border-border rounded text-xs font-bold text-slate-300 hover:text-white transition-colors">
+              <RefreshCw className="w-4 h-4" />
+              <span className="hidden md:inline">Refresh</span>
+           </button>
            <button className="flex items-center space-x-2 px-3 py-2 bg-surface border border-border rounded text-xs font-bold text-slate-300 hover:text-white transition-colors">
               <SlidersHorizontal className="w-4 h-4" />
               <span>Filter</span>
