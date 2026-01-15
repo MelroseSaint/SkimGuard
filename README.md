@@ -32,6 +32,12 @@ It combines **computer vision**, **RF spectral analysis**, **fuzzy logic pattern
 - **Chain of Custody**: Generates cryptographically hashed PDF reports for law enforcement handover.
 - **Local Vault**: Stores evidence fully offline in IndexedDB.
 
+## 🔒 Browser Permissions
+To fully utilize the hardware sensors, the application requires the following permissions:
+- **Camera**: For visual inspection and flash control.
+- **Location**: For tagging incident coordinates (GPS).
+- **Bluetooth**: To scan for nearby BLE devices (Skimmers).
+
 ## 🛠️ Tech Stack
 
 - **Core**: React 19, TypeScript, Vite

@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { Camera, TriangleAlert, Zap, Scan, Radio, Target, RefreshCw, Activity, XCircle, CheckCircle, Flag, SignalHigh, SignalMedium, SignalLow, Fingerprint, Info, Battery, MapPin, ChevronDown, Sun, Settings2, Building2, Fuel, ShoppingBag, Users } from 'lucide-react';
+import { Camera, TriangleAlert, Zap, Scan, Radio, Target, RefreshCw, Activity, XCircle, CheckCircle, Flag, SignalHigh, SignalMedium, SignalLow, Fingerprint, Info, Battery, MapPin, ChevronDown, Sun, Building2, Fuel, ShoppingBag, Users } from 'lucide-react';
 import { calculateRisk } from '../services/gemini';
 import { TrustAuthority } from '../services/trustLayer';
 import { DetectionRecord, DetectionStatus, InspectionChecklist, SyncStatus, DeviceLog, ScanEnvironment, DetectionMethod } from '../types';
