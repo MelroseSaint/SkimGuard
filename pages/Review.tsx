@@ -3,12 +3,17 @@ import { getDetections, updateDetectionStatus } from '../services/db';
 import { DetectionRecord, DetectionStatus } from '../types';
 import { generateAuthorityReport } from '../services/reportGenerator';
 import { TrustAuthority } from '../services/trustLayer';
-import { FileDown, Search, AlertCircle, CheckCircle2, ChevronRight, ChevronDown, SlidersHorizontal, Lock, Share2, ShieldAlert, RefreshCw } from 'lucide-react';
+import { FileDown, Search, AlertCircle, CheckCircle2, ChevronRight, ChevronDown, SlidersHorizontal, Lock, Share2, ShieldAlert, RefreshCw, X, Filter } from 'lucide-react';
 
 const Review: React.FC = () => {
   const [detections, setDetections] = useState<DetectionRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+
+  // Filter State
+  const [showFilters, setShowFilters] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<string>('ALL');
+  const [minRisk, setMinRisk] = useState<number>(0);
 
   useEffect(() => {
     loadDetections();
@@ -81,6 +86,24 @@ const Review: React.FC = () => {
       }
   };
 
+  // Filter Logic
+  const filteredDetections = detections.filter(record => {
+      // 1. Status Filter
+      if (statusFilter !== 'ALL' && record.status !== statusFilter) return false;
+      
+      // 2. Risk Score Filter
+      if (record.analysis.riskScore < minRisk) return false;
+
+      return true;
+  });
+
+  const activeFiltersCount = (statusFilter !== 'ALL' ? 1 : 0) + (minRisk > 0 ? 1 : 0);
+
+  const resetFilters = () => {
+      setStatusFilter('ALL');
+      setMinRisk(0);
+  };
+
   if (loading) return <div className="flex justify-center items-center h-full text-slate-500 font-mono text-sm">LOADING LOGS...</div>;
 
   return (
@@ -101,12 +124,52 @@ const Review: React.FC = () => {
               <RefreshCw className="w-4 h-4" />
               <span className="hidden md:inline">Refresh</span>
            </button>
-           <button className="flex items-center space-x-2 px-3 py-2 bg-surface border border-border rounded text-xs font-bold text-slate-300 hover:text-white transition-colors">
+           <button 
+              onClick={() => setShowFilters(!showFilters)} 
+              className={`flex items-center space-x-2 px-3 py-2 border rounded text-xs font-bold transition-colors ${showFilters || activeFiltersCount > 0 ? 'bg-primary/10 text-primary border-primary/30' : 'bg-surface border-border text-slate-300 hover:text-white'}`}
+           >
               <SlidersHorizontal className="w-4 h-4" />
-              <span>Filter</span>
+              <span>Filter {activeFiltersCount > 0 && `(${activeFiltersCount})`}</span>
            </button>
         </div>
       </div>
+
+      {/* Filter Panel */}
+      {showFilters && (
+        <div className="bg-surface border border-border rounded-lg p-4 grid grid-cols-1 md:grid-cols-12 gap-6 animate-in slide-in-from-top-2 shadow-xl">
+            <div className="md:col-span-5">
+                <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-2 block">Status Category</label>
+                <div className="flex flex-wrap gap-2">
+                    <FilterChip label="All" active={statusFilter === 'ALL'} onClick={() => setStatusFilter('ALL')} />
+                    <FilterChip label="Threats" active={statusFilter === DetectionStatus.CONFIRMED} onClick={() => setStatusFilter(DetectionStatus.CONFIRMED)} color="danger" />
+                    <FilterChip label="Pending" active={statusFilter === DetectionStatus.PENDING} onClick={() => setStatusFilter(DetectionStatus.PENDING)} color="accent" />
+                    <FilterChip label="Safe" active={statusFilter === DetectionStatus.CLEARED} onClick={() => setStatusFilter(DetectionStatus.CLEARED)} color="primary" />
+                </div>
+            </div>
+             <div className="md:col-span-5">
+                <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-2 block flex justify-between">
+                    <span>Min Risk Score</span>
+                    <span className="text-white font-mono">{minRisk}%</span>
+                </label>
+                <div className="flex items-center space-x-3">
+                    <span className="text-xs text-slate-500 font-mono">0%</span>
+                    <input 
+                        type="range" 
+                        min="0" max="100" 
+                        value={minRisk} 
+                        onChange={(e) => setMinRisk(parseInt(e.target.value))}
+                        className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-primary"
+                    />
+                    <span className="text-xs text-slate-500 font-mono">100%</span>
+                </div>
+            </div>
+             <div className="md:col-span-2 flex items-end justify-end">
+                 <button onClick={resetFilters} className="text-xs text-slate-500 hover:text-white underline decoration-slate-600 underline-offset-4 flex items-center">
+                    <X className="w-3 h-3 mr-1" /> Reset
+                 </button>
+             </div>
+        </div>
+      )}
 
       <div className="bg-surface border border-border rounded-xl overflow-hidden shadow-xl">
         {/* Desktop Header */}
@@ -124,13 +187,16 @@ const Review: React.FC = () => {
         </div>
 
         <div className="divide-y divide-border">
-          {detections.length === 0 ? (
+          {filteredDetections.length === 0 ? (
             <div className="p-12 text-center">
               <Search className="w-12 h-12 text-slate-700 mx-auto mb-4" />
-              <p className="text-slate-500 font-medium">No records found in local vault.</p>
+              <p className="text-slate-500 font-medium">No records match your filters.</p>
+              {(statusFilter !== 'ALL' || minRisk > 0) && (
+                  <button onClick={resetFilters} className="mt-4 text-xs text-primary font-bold hover:underline">Clear Filters</button>
+              )}
             </div>
           ) : (
-            detections.map((record) => (
+            filteredDetections.map((record) => (
               <DetectionRow 
                   key={record.id} 
                   record={record} 
@@ -144,11 +210,29 @@ const Review: React.FC = () => {
       </div>
       
       <div className="text-xs text-slate-500 flex justify-between items-center">
-         <span>Showing {detections.length} events</span>
+         <span>Showing {filteredDetections.length} of {detections.length} events</span>
          <span className="flex items-center"><Lock className="w-3 h-3 mr-1" /> Encrypted Local Vault</span>
       </div>
     </div>
   );
+};
+
+const FilterChip: React.FC<{label: string, active: boolean, onClick: () => void, color?: 'primary'|'danger'|'accent'}> = ({label, active, onClick, color = 'primary'}) => {
+    let activeClass = '';
+    switch(color) {
+        case 'danger': activeClass = 'bg-danger text-white border-danger'; break;
+        case 'accent': activeClass = 'bg-accent text-white border-accent'; break;
+        default: activeClass = 'bg-primary text-background border-primary';
+    }
+    
+    return (
+        <button 
+            onClick={onClick}
+            className={`px-3 py-1 rounded text-xs font-bold border transition-all ${active ? activeClass : 'bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-500'}`}
+        >
+            {label}
+        </button>
+    );
 };
 
 const DetectionRow: React.FC<{ 

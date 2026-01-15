@@ -1,22 +1,90 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { Camera, TriangleAlert, Zap, Scan, Radio, Target, RefreshCw, Activity, XCircle, CheckCircle, Flag, SignalHigh, SignalMedium, SignalLow, Fingerprint, Info, Battery, MapPin, ChevronDown, Sun } from 'lucide-react';
+import { Camera, TriangleAlert, Zap, Scan, Radio, Target, RefreshCw, Activity, XCircle, CheckCircle, Flag, SignalHigh, SignalMedium, SignalLow, Fingerprint, Info, Battery, MapPin, ChevronDown, Sun, Settings2, Building2, Fuel, ShoppingBag, Users } from 'lucide-react';
 import { calculateRisk } from '../services/gemini';
 import { TrustAuthority } from '../services/trustLayer';
-import { DetectionRecord, DetectionStatus, InspectionChecklist, SyncStatus, DeviceLog } from '../types';
+import { DetectionRecord, DetectionStatus, InspectionChecklist, SyncStatus, DeviceLog, ScanEnvironment, DetectionMethod } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 
-// Extended Threat Signature Database
+// Helper: Normalize string (Lowercase, strip separators)
+const normalize = (str: string): string => {
+  return str.toLowerCase().replace(/[\s\-_\.]/g, '');
+};
+
+// Helper: Levenshtein Distance with Max Distance Cap
+// Exits early if distance exceeds maxDist to save CPU cycles
+const getLevenshteinDistance = (s: string, t: string, maxDist: number = 3): number => {
+  if (s === t) return 0;
+  if (Math.abs(s.length - t.length) > maxDist) return maxDist + 1;
+
+  const d: number[][] = [];
+  const n = s.length;
+  const m = t.length;
+
+  for (let i = 0; i <= n; i++) d[i] = [i];
+  for (let j = 0; j <= m; j++) d[0][j] = j;
+
+  for (let i = 1; i <= n; i++) {
+    let rowMin = maxDist + 1;
+    for (let j = 1; j <= m; j++) {
+      const cost = s[i - 1] === t[j - 1] ? 0 : 1;
+      d[i][j] = Math.min(
+        d[i - 1][j] + 1, // deletion
+        d[i][j - 1] + 1, // insertion
+        d[i - 1][j - 1] + cost // substitution
+      );
+      rowMin = Math.min(rowMin, d[i][j]);
+    }
+    // Optimization: If entire row exceeds maxDist, we can stop early
+    if (rowMin > maxDist) return maxDist + 1;
+  }
+  return d[n][m];
+};
+
+// 1. Expanded Threat Signature Database
 const THREAT_SIGNATURES = [
-  { prefix: 'HC-05', type: 'Generic Serial (Arduino)', risk: 'HIGH' },
-  { prefix: 'HC-06', type: 'Generic Serial (Arduino)', risk: 'HIGH' },
-  { prefix: 'HC-08', type: 'BLE Serial', risk: 'HIGH' },
-  { prefix: 'HM-10', type: 'BLE Serial', risk: 'HIGH' },
-  { prefix: 'CC2541', type: 'TI BLE Chip', risk: 'MED' },
-  { prefix: 'MSR', type: 'MagStripe Reader', risk: 'CRITICAL' },
-  { prefix: 'FROGSKIM', type: 'Known Threat', risk: 'CRITICAL' },
-  { prefix: 'FREEWAY', type: 'Known Threat', risk: 'CRITICAL' },
-  { prefix: 'SCM', type: 'Skimmer variant', risk: 'HIGH' },
-  { prefix: 'ISP', type: 'Programmer', risk: 'LOW' }
+  // High Risk Modules (Often used in DIY skimmers)
+  { pattern: /HC[-_]?(05|06|08|12)/i, type: 'Generic Serial (Arduino)', risk: 'HIGH' },
+  { pattern: /HM[-_]?(10|11|13|19)/i, type: 'BLE Serial', risk: 'HIGH' },
+  { pattern: /CC254[01]/i, type: 'TI BLE Chip', risk: 'MED' },
+  { pattern: /RN[-_]?(41|42|52|487[01])/i, type: 'Microchip Bluetooth', risk: 'HIGH' },
+  { pattern: /JDY[-_]?(06|08|10|30|31|33)/i, type: 'Cheap Serial Module', risk: 'HIGH' },
+  { pattern: /AT[-_]?09/i, type: 'BLE Serial (HM-10 Clone)', risk: 'HIGH' },
+  { pattern: /DX[-_]?BT/i, type: 'Serial Adaptor', risk: 'MED' },
+  { pattern: /MLT[-_]?BT/i, type: 'Serial Adaptor', risk: 'MED' },
+  { pattern: /(DSD|SH)[-_]?TECH/i, type: 'DSD Tech Serial', risk: 'HIGH' },
+
+  // Protocols & Generic Identifiers
+  { pattern: /SPP[-_]?C?A?/i, type: 'Serial Port Profile', risk: 'MED' },
+  { pattern: /BT[-_]?(04|05)/i, type: 'Generic Serial', risk: 'HIGH' },
+  { pattern: /BOLUTEK/i, type: 'Serial Adaptor', risk: 'MED' },
+
+  // Specific Skimmer Keywords & Known Threats
+  { pattern: /MSR/i, type: 'MagStripe Reader', risk: 'CRITICAL' },
+  { pattern: /FROG/i, type: 'Known Threat (Frog)', risk: 'CRITICAL' },
+  { pattern: /FREEWAY/i, type: 'Known Threat (Freeway)', risk: 'CRITICAL' },
+  { pattern: /VIM[-_]?PROTO/i, type: 'Deep Insert Skimmer', risk: 'CRITICAL' },
+  { pattern: /PLURAL/i, type: 'Deep Insert Skimmer', risk: 'CRITICAL' },
+  { pattern: /SCM/i, type: 'Skimmer variant', risk: 'HIGH' },
+  { pattern: /SKIM/i, type: 'Explicit Threat Name', risk: 'CRITICAL' },
+  
+  // Hacking Tools
+  { pattern: /FLIPPER/i, type: 'Flipper Zero', risk: 'HIGH' },
+  { pattern: /PROXMARK/i, type: 'Proxmark3', risk: 'HIGH' },
+  { pattern: /CHAMELEON/i, type: 'ChameleonMini/Tiny', risk: 'HIGH' },
+  
+  // HID & Peripherals (Context Dependent)
+  { pattern: /KEY(BOARD|PAD)/i, type: 'HID Injection Device', risk: 'MED' }, // Risky in ATM
+  { pattern: /MOUSE/i, type: 'HID Device', risk: 'LOW' },
+  
+  // Diagnostic Tools
+  { pattern: /ELM[-_]?327/i, type: 'OBDII Scanner', risk: 'LOW' }
+];
+
+// Keywords for fuzzy matching (normalized comparison)
+const FUZZY_KEYWORDS = [
+    'HC05', 'HC06', 'MSR', 'SKIMMER', 'FROG', 'FREEWAY', 
+    'RN42', 'RN52', 'CC2541', 'JDY08', 'JDY30', 'AT09', 
+    'FLIPPER', 'PLURAL', 'VIMPROTO', 'DSDTECH'
 ];
 
 interface BluetoothDevice extends EventTarget {
@@ -40,6 +108,8 @@ interface BluetoothDeviceItem {
   isThreat: boolean;
   threatType?: string;
   riskLevel?: string;
+  detectionMethod?: DetectionMethod;
+  matchedKeyword?: string;
 }
 
 const Scanner: React.FC = () => {
@@ -58,7 +128,7 @@ const Scanner: React.FC = () => {
   const [rssiThreshold, setRssiThreshold] = useState(-60);
   const [lowPowerMode, setLowPowerMode] = useState(false);
   const [useSignalFilter, setUseSignalFilter] = useState(true);
-  // Ref for smart filter to access inside event listeners
+  const [scanEnvironment, setScanEnvironment] = useState<ScanEnvironment>(ScanEnvironment.ATM);
   const smartFilterRef = useRef(true);
   
   // UI State
@@ -103,7 +173,6 @@ const Scanner: React.FC = () => {
     if (savedSignalFilter !== null) setUseSignalFilter(savedSignalFilter === 'true');
     if (savedSmartFilter !== null) smartFilterRef.current = (savedSmartFilter === 'true');
     
-    // Acquire GPS immediately in background
     acquireLocation();
   }, []);
 
@@ -159,8 +228,6 @@ const Scanner: React.FC = () => {
         const ctx = canvas.getContext('2d', { willReadFrequently: true });
 
         if (ctx && video.readyState === video.HAVE_ENOUGH_DATA) {
-          // CRITICAL OPTIMIZATION: Only resize canvas if dimensions differ.
-          // Resizing on every frame forces full buffer reallocation (High CPU).
           if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
              canvas.width = video.videoWidth;
              canvas.height = video.videoHeight;
@@ -168,15 +235,11 @@ const Scanner: React.FC = () => {
           
           ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-          // Responsive box geometry
           const boxW = canvas.width * (window.innerWidth < 768 ? 0.8 : 0.6);
           const boxH = canvas.height * (window.innerWidth < 768 ? 0.3 : 0.4);
           const x = (canvas.width - boxW) / 2;
           const y = (canvas.height - boxH) / 2;
 
-          // Real-time Analysis: Calculate Luminance in the ROI (Region of Interest)
-          // Analyze center 50x50 pixels for reflection spikes (tape/plastic)
-          // Throttled analysis for performance: check every 15 frames (~4 times/sec)
           if (frameCount % 15 === 0) {
               try {
                   const sampleSize = 50;
@@ -186,24 +249,19 @@ const Scanner: React.FC = () => {
                   const data = frame.data;
                   let brightnessSum = 0;
                   
-                  // Simple luminance calculation
                   for(let i = 0; i < data.length; i += 4) {
                       brightnessSum += (0.299 * data[i] + 0.587 * data[i+1] + 0.114 * data[i+2]);
                   }
                   
                   const avgBrightness = brightnessSum / (data.length / 4);
-                  // Normalize 0-255 to 0-100 score
                   reflectionMetricRef.current = (avgBrightness / 255) * 100;
-              } catch (e) {
-                  // Ignore frame read errors
-              }
+              } catch (e) { }
           }
           frameCount++;
 
           const currentReflection = reflectionMetricRef.current;
-          const isCritical = signalStrength > rssiThreshold || currentReflection > 85; // >85% brightness implies glare/tape
+          const isCritical = signalStrength > rssiThreshold || currentReflection > 85; 
           
-          // Draw HUD
           ctx.strokeStyle = isCritical ? '#EF4444' : '#10B981';
           ctx.lineWidth = 4;
           ctx.strokeRect(x, y, boxW, boxH);
@@ -226,7 +284,6 @@ const Scanner: React.FC = () => {
 
     if (isInspecting) {
       renderLoop();
-      // Sync CV data to React State for UI updates (less frequent than render loop)
       const interval = setInterval(() => {
          setReflectionIndex(reflectionMetricRef.current);
       }, 200);
@@ -254,7 +311,6 @@ const Scanner: React.FC = () => {
 
   const startCamera = async () => {
     try {
-      // Try preferred settings first
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } }
       });
@@ -262,7 +318,6 @@ const Scanner: React.FC = () => {
     } catch (err) {
       console.warn("Preferred camera config failed, falling back to default.", err);
       try {
-        // Fallback for laptops/desktops without 'environment' facing mode
         const stream = await navigator.mediaDevices.getUserMedia({ video: true });
         applyStream(stream);
       } catch (fatalErr) {
@@ -306,16 +361,68 @@ const Scanner: React.FC = () => {
       activeDeviceRef.current = null;
   };
 
-  const identifyDevice = (name: string, smartFilterEnabled: boolean) => {
-      const upperName = name.toUpperCase();
-      const match = THREAT_SIGNATURES.find(sig => upperName.includes(sig.prefix));
-      if (match) return match;
-      if (['UNNAMED', 'DEVICE', 'BT05', 'HC-05'].includes(upperName)) {
-          return { type: 'Generic Suspicious', risk: 'MED' };
+  const identifyDevice = (name: string, smartFilterEnabled: boolean, env: ScanEnvironment) => {
+      const originalName = name;
+      const normalizedName = normalize(name);
+
+      // 1. Strict Regex Pattern Matching (Highest Confidence)
+      // We test against original name to preserve specific formatting signals if needed, 
+      // though most regexes should be case-insensitive.
+      const regexMatch = THREAT_SIGNATURES.find(sig => sig.pattern.test(originalName));
+      if (regexMatch) {
+          return { type: regexMatch.type, risk: regexMatch.risk, method: DetectionMethod.REGEX };
       }
-      // If Smart Filter is disabled, we flag unknown devices as potential risks for manual review
+
+      // 2. Fuzzy Matching (Intelligence Gathering)
+      // Only run on short strings to prevent CPU spikes
+      if (normalizedName.length > 3 && normalizedName.length < 15) {
+          for (const keyword of FUZZY_KEYWORDS) {
+              const normalizedKeyword = normalize(keyword);
+              
+              // Dynamic threshold based on keyword length
+              // Distance <= 1 for strings under 6 chars
+              // Distance <= 2 for strings under 10 chars
+              let threshold = 1;
+              if (normalizedKeyword.length >= 6) threshold = 2;
+              if (normalizedKeyword.length >= 10) threshold = 3; 
+              
+              const dist = getLevenshteinDistance(normalizedName, normalizedKeyword, threshold);
+              
+              if (dist <= threshold) {
+                  // Scoring Logic for Confidence
+                  let riskLevel = 'HIGH';
+                  let method = DetectionMethod.FUZZY;
+                  
+                  if (dist === 0) {
+                      // Exact normalized match
+                      riskLevel = 'CRITICAL'; 
+                  } else if (dist === 1) {
+                      riskLevel = 'HIGH';
+                  } else {
+                      riskLevel = 'MED'; // Lower confidence
+                  }
+
+                  return { 
+                      type: `Suspicious Variant (${keyword})`, 
+                      risk: riskLevel, 
+                      method: method, 
+                      matchedKeyword: keyword 
+                  };
+              }
+          }
+      }
+
+      // 3. Heuristics & Environment Scoring
+      // Check normalized common names
+      if (['unnamed', 'device', 'unknown', 'serial', 'spp', 'keyboard', 'mouse'].includes(normalizedName)) {
+          // In ATM mode, ANY generic device is critical. In Retail, it's just noise.
+          const envRisk = env === ScanEnvironment.ATM ? 'HIGH' : 'MED';
+          return { type: 'Generic Suspicious', risk: envRisk, method: DetectionMethod.HEURISTIC };
+      }
+      
+      // 4. Smart Filter Check
       if (!smartFilterEnabled) {
-          return { type: 'Unverified Device (Raw Mode)', risk: 'LOW' };
+          return { type: 'Unverified Device (Raw Mode)', risk: 'LOW', method: DetectionMethod.MANUAL };
       }
       return null;
   };
@@ -345,8 +452,8 @@ const Scanner: React.FC = () => {
             const name = device.name || "Unknown Device";
             const id = device.id;
             
-            // Check Threat Status based on Smart Filter setting
-            const threatInfo = identifyDevice(name, smartFilterRef.current);
+            // Pass Environment to Logic
+            const threatInfo = identifyDevice(name, smartFilterRef.current, scanEnvironment);
             const isThreat = !!threatInfo;
 
             setBtList(prev => {
@@ -359,7 +466,9 @@ const Scanner: React.FC = () => {
                     timestamp: Date.now(),
                     isThreat: isThreat,
                     threatType: threatInfo?.type,
-                    riskLevel: threatInfo?.risk
+                    riskLevel: threatInfo?.risk,
+                    detectionMethod: threatInfo?.method,
+                    matchedKeyword: threatInfo?.matchedKeyword
                  }, ...clean];
             });
 
@@ -389,7 +498,9 @@ const Scanner: React.FC = () => {
                         timestamp: Date.now(),
                         isThreat: isThreat,
                         threatType: threatInfo?.type,
-                        riskLevel: threatInfo?.risk
+                        riskLevel: threatInfo?.risk,
+                        detectionMethod: threatInfo?.method,
+                        matchedKeyword: threatInfo?.matchedKeyword
                     };
 
                     const newList = [...prevList];
@@ -471,10 +582,14 @@ const Scanner: React.FC = () => {
         name: item.name,
         rssi: item.rssi,
         threatType: item.threatType,
-        timestamp: item.timestamp
+        timestamp: item.timestamp,
+        detectionMethod: item.detectionMethod,
+        matchedKeyword: item.matchedKeyword
     }));
 
-    const riskAnalysis = calculateRisk(checklist, deviceLogs);
+    // Pass Environment to Logic
+    const riskAnalysis = calculateRisk(checklist, deviceLogs, scanEnvironment);
+    
     if (status === DetectionStatus.CONFIRMED) {
         riskAnalysis.isSuspicious = true;
         riskAnalysis.riskScore = 100;
@@ -487,7 +602,7 @@ const Scanner: React.FC = () => {
       analysis: riskAnalysis,
       status: status,
       syncStatus: SyncStatus.PENDING,
-      deviceType: "ATM-GENERIC-01",
+      deviceType: `${scanEnvironment}-TERMINAL-${uuidv4().substring(0,4)}`,
       location: locationData
     };
 
@@ -521,9 +636,37 @@ const Scanner: React.FC = () => {
             <Scan className="w-8 h-8 text-primary" />
           </div>
           <h2 className="text-2xl font-bold text-white mb-2">Endpoint Live Monitor</h2>
-          <p className="text-slate-400 text-sm mb-8">
-            Initiate deep scan protocol. Hardware sensors required.
+          <p className="text-slate-400 text-sm mb-6">
+            Initiate deep scan protocol. Select the environment type for optimized heuristics.
           </p>
+
+          <div className="grid grid-cols-2 gap-3 mb-6">
+              <EnvironmentCard 
+                  active={scanEnvironment === ScanEnvironment.ATM} 
+                  onClick={() => setScanEnvironment(ScanEnvironment.ATM)}
+                  label="ATM" 
+                  icon={<Building2 className="w-4 h-4" />} 
+              />
+              <EnvironmentCard 
+                  active={scanEnvironment === ScanEnvironment.FUEL_PUMP} 
+                  onClick={() => setScanEnvironment(ScanEnvironment.FUEL_PUMP)}
+                  label="Fuel Pump" 
+                  icon={<Fuel className="w-4 h-4" />} 
+              />
+              <EnvironmentCard 
+                  active={scanEnvironment === ScanEnvironment.RETAIL_POS} 
+                  onClick={() => setScanEnvironment(ScanEnvironment.RETAIL_POS)}
+                  label="Retail POS" 
+                  icon={<ShoppingBag className="w-4 h-4" />} 
+              />
+              <EnvironmentCard 
+                  active={scanEnvironment === ScanEnvironment.PUBLIC_SPACE} 
+                  onClick={() => setScanEnvironment(ScanEnvironment.PUBLIC_SPACE)}
+                  label="Public" 
+                  icon={<Users className="w-4 h-4" />} 
+              />
+          </div>
+
           <div className="space-y-4">
             <button 
                 onClick={() => setIsInspecting(true)}
@@ -548,8 +691,14 @@ const Scanner: React.FC = () => {
       {/* HUD Header */}
       <div className="bg-surface border-b border-border p-3 flex items-center justify-between z-10 shrink-0">
         <div className="flex items-center space-x-4">
-          <span className="text-lg font-bold text-white hidden md:inline">ATM #4492-BX</span>
-          <span className="text-sm font-bold text-white md:hidden">SCANNING...</span>
+          <div className="hidden md:block">
+              <div className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-0.5">TARGET ENV</div>
+              <div className="text-sm font-bold text-white flex items-center">
+                  <span className="w-2 h-2 rounded-full bg-primary mr-2"></span>
+                  {scanEnvironment.replace('_', ' ')}
+              </div>
+          </div>
+          
           <div className="flex items-center space-x-2">
             <span className={`text-[10px] font-bold px-2 py-0.5 rounded border animate-pulse ${checklist.bluetoothSignal || signalStrength > rssiThreshold ? 'bg-danger/20 text-danger border-danger/20' : 'bg-primary/20 text-primary border-primary/20'}`}>
                {checklist.bluetoothSignal || signalStrength > rssiThreshold ? 'SIGNAL ALERT' : 'NOMINAL'}
@@ -611,6 +760,7 @@ const Scanner: React.FC = () => {
              scanBluetooth={scanBluetooth}
              isScanning={isScanning}
              rssiThreshold={rssiThreshold}
+             env={scanEnvironment}
           />
         </div>
 
@@ -631,6 +781,7 @@ const Scanner: React.FC = () => {
                         scanBluetooth={scanBluetooth}
                         isScanning={isScanning}
                         rssiThreshold={rssiThreshold}
+                        env={scanEnvironment}
                     />
                 </div>
             </div>
@@ -728,12 +879,24 @@ const Scanner: React.FC = () => {
   );
 };
 
-const SidebarContent: React.FC<any> = ({ reflectionIndex, signalStrength, btList, checklist, setChecklist, scanBluetooth, isScanning, rssiThreshold }) => (
+const EnvironmentCard: React.FC<{active: boolean, onClick: () => void, label: string, icon: React.ReactNode}> = ({active, onClick, label, icon}) => (
+    <button onClick={onClick} className={`p-3 rounded border text-left transition-all ${active ? 'bg-primary/20 border-primary text-white' : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-500'}`}>
+        <div className={`mb-2 ${active ? 'text-primary' : 'text-slate-500'}`}>{icon}</div>
+        <div className="text-xs font-bold">{label}</div>
+    </button>
+);
+
+const SidebarContent: React.FC<any> = ({ reflectionIndex, signalStrength, btList, checklist, setChecklist, scanBluetooth, isScanning, rssiThreshold, env }) => (
   <>
     <div className="p-4 border-b border-border">
       <h3 className="text-xs font-bold text-slate-400 uppercase mb-3 flex items-center">
         <Activity className="w-3 h-3 mr-2" /> Real-Time Analytics
       </h3>
+
+      <div className="flex items-center justify-between mb-3 bg-slate-800/50 p-2 rounded border border-slate-700">
+          <span className="text-[10px] font-bold text-slate-400 uppercase">Heuristics Mode</span>
+          <span className="text-[10px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded border border-primary/20">{env}</span>
+      </div>
       
       <div className="bg-background border border-border rounded p-3 mb-3">
         <div className="flex justify-between text-xs mb-1">
@@ -775,27 +938,41 @@ const SidebarContent: React.FC<any> = ({ reflectionIndex, signalStrength, btList
                 {btList.map((device: BluetoothDeviceItem) => {
                     const isStrong = device.rssi > rssiThreshold;
                     return (
-                        <div key={device.id} className={`flex items-center justify-between p-2 rounded border ${device.isThreat ? 'bg-danger/20 border-danger animate-pulse' : isStrong ? 'bg-slate-700 border-slate-500' : 'bg-slate-800/30 border-slate-700'}`}>
-                           <div className="flex items-center min-w-0">
-                               <div className="mr-2">
-                                  {device.isThreat ? <Fingerprint className="w-4 h-4 text-danger" /> :
-                                   device.rssi > -50 ? <SignalHigh className="w-3 h-3 text-white" /> : 
-                                   device.rssi > -70 ? <SignalMedium className="w-3 h-3 text-slate-400" /> : 
-                                   <SignalLow className="w-3 h-3 text-slate-600" />}
+                        <div key={device.id} className={`flex flex-col p-2 rounded border ${device.isThreat ? 'bg-danger/20 border-danger animate-pulse' : isStrong ? 'bg-slate-700 border-slate-500' : 'bg-slate-800/30 border-slate-700'}`}>
+                           <div className="flex items-center justify-between mb-1">
+                               <div className="flex items-center min-w-0">
+                                   <div className="mr-2">
+                                      {device.isThreat ? <Fingerprint className="w-4 h-4 text-danger" /> :
+                                       device.rssi > -50 ? <SignalHigh className="w-3 h-3 text-white" /> : 
+                                       device.rssi > -70 ? <SignalMedium className="w-3 h-3 text-slate-400" /> : 
+                                       <SignalLow className="w-3 h-3 text-slate-600" />}
+                                   </div>
+                                   <div className="truncate">
+                                       <div className={`text-xs font-mono font-bold truncate ${device.isThreat ? 'text-danger' : 'text-slate-300'}`}>{device.name || "Unknown"}</div>
+                                   </div>
                                </div>
-                               <div className="truncate">
-                                   <div className={`text-xs font-mono font-bold truncate ${device.isThreat ? 'text-danger' : 'text-slate-300'}`}>{device.name || "Unknown"}</div>
-                                   {device.isThreat && (
-                                       <div className="flex items-center mt-0.5">
-                                           <span className="text-[9px] font-bold text-white bg-danger px-1 rounded mr-1">THREAT</span>
-                                           <span className="text-[9px] text-danger">{device.threatType}</span>
-                                       </div>
+                               <div className={`text-xs font-mono font-bold ${isStrong ? 'text-white' : 'text-slate-500'}`}>
+                                   {device.rssi}dB
+                               </div>
+                           </div>
+                           
+                           {/* Threat & Intel Metadata */}
+                           {device.isThreat && (
+                               <div className="mt-1 pt-1 border-t border-danger/30 flex flex-wrap gap-1">
+                                   <span className="text-[9px] font-bold text-white bg-danger px-1 rounded">THREAT</span>
+                                   <span className="text-[9px] text-danger">{device.threatType}</span>
+                                   {device.detectionMethod === DetectionMethod.FUZZY && (
+                                       <span className="text-[9px] text-accent bg-accent/10 px-1 rounded border border-accent/20 font-mono">
+                                           FUZZY_MATCH: {device.matchedKeyword}
+                                       </span>
+                                   )}
+                                   {device.detectionMethod === DetectionMethod.REGEX && (
+                                       <span className="text-[9px] text-primary bg-primary/10 px-1 rounded border border-primary/20 font-mono">
+                                           SIG_MATCH
+                                       </span>
                                    )}
                                </div>
-                           </div>
-                           <div className={`text-xs font-mono font-bold ${isStrong ? 'text-white' : 'text-slate-500'}`}>
-                               {device.rssi}dB
-                           </div>
+                           )}
                         </div>
                     );
                 })}

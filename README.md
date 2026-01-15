@@ -1,25 +1,31 @@
+
 # 🛡️ SkimGuard (Pro Tool)
 
 **SkimGuard** is a professional-grade, real-time inspection utility designed for field agents to identify ATM and Point-of-Sale (POS) skimmers. 
 
-It combines **computer vision**, **RF spectral analysis**, and **physical inspection protocols** into a single, offline-capable progressive web application (PWA).
+It combines **computer vision**, **RF spectral analysis**, **fuzzy logic pattern matching**, and **physical inspection protocols** into a single, offline-capable progressive web application (PWA).
 
 ## ✨ Key Capabilities
 
+### 🧠 Adaptive Risk Engine
+- **Environment Context**: Tailors risk heuristics based on the scan location (ATM, Fuel Pump, Retail POS, or Public Space). 
+- **Dynamic Scoring**: Stricter thresholds are applied in high-security zones (ATMs), while noise filters are relaxed in public areas.
+
 ### 📡 Real-Time Telemetry
-- **Live Dashboard**: Optimized polling (6s intervals) monitors system health, detection volume trends, and hardware status (Battery, GPS, Network) efficiently.
-- **Hardware Integration**: Direct access to device sensors including Magnetometer (simulated via API hooks), Bluetooth Radio, and Camera Torch.
-- **Simulated Trends**: Real-time signal noise simulation in the dashboard for demonstration purposes when hardware is idle.
+- **Live Dashboard**: Optimized polling monitors system health, detection volume trends, and hardware status efficiently.
+- **Hardware Integration**: Direct access to device sensors including Bluetooth Radio, Geolocation, and Camera Torch.
+- **Simulated Trends**: Real-time signal noise simulation in the dashboard for demonstration purposes.
 
 ### 🔍 Advanced Detection Engine
-- **Bluetooth Smart Filter**: Automatically suppresses known benign devices (Headphones, Smartwatches) to focus on potential threats using `THREAT_SIGNATURES`.
-- **Raw Signal Mode**: Toggle filters off to visualize raw RSSI volatility and detect faint signals from deeply embedded skimmers.
-- **Visual Analysis**: Real-time luminance detection to identify glossy overlays or tape residue on card readers using HTML5 Canvas pixel analysis (throttled for performance).
+- **Expanded Threat Database**: Detects 50+ known skimmer modules (HC-05, RN-42, JDY-08) and hacking tools (Flipper Zero, Proxmark).
+- **Fuzzy Logic Matching**: Uses Levenshtein distance algorithms to identify obfuscated or misspelled device names (e.g., detecting "H-C-0-5" as a variant of "HC05").
+- **Smart Filters**: Automatically prioritizes high-confidence Regex matches over heuristic variants to reduce false positives.
+- **Visual Analysis**: Real-time luminance detection to identify glossy overlays or tape residue on card readers.
 
 ### 🏢 Enterprise MDM & Security
 - **Device Management**: Automatic asset tagging and compliance monitoring (Battery levels, Geolocation permission).
 - **Quarantine Protocol**: Locks the interface if security policies (e.g., offline for >24h) are violated.
-- **Remote Wipe Simulation**: Field agents can execute a "Remote Wipe" to instantly purge the local encrypted vault and reset encryption keys.
+- **Remote Wipe Simulation**: Field agents can execute a "Remote Wipe" to instantly purge the local encrypted vault.
 - **AES-256 Encryption**: All evidence logs are encrypted at rest using the Web Crypto API (`AES-GCM`).
 
 ### 📝 Forensic Evidence
@@ -29,12 +35,12 @@ It combines **computer vision**, **RF spectral analysis**, and **physical inspec
 ## 🛠️ Tech Stack
 
 - **Core**: React 19, TypeScript, Vite
-- **UI/UX**: Tailwind CSS, Lucide Icons, Recharts (Real-time graphing)
+- **UI/UX**: Tailwind CSS, Lucide Icons, Recharts
+- **Logic**: Levenshtein Edit Distance, Regex Pattern Matching
 - **Hardware Access**: 
   - `navigator.bluetooth` (Web Bluetooth API)
   - `navigator.mediaDevices` (Camera/Flash)
   - `navigator.geolocation` (GPS)
-  - `navigator.getBattery` (Power Management)
 - **Security**: Web Crypto API (AES-GCM), IndexedDB
 
 ## 🚀 Getting Started
@@ -74,10 +80,11 @@ It combines **computer vision**, **RF spectral analysis**, and **physical inspec
 
 1. **Dashboard**: Check system status. Ensure "Live Monitoring" is active.
 2. **Scanner**: 
-   - **Visual**: Use the HUD to check Surface Reflection Index (SRI). High SRI (>85%) suggests tape or plastic overlays.
-   - **RF Scan**: Activate the Bluetooth scanner. Use **Settings** to toggle "Smart Filter" if you suspect a non-standard device.
+   - **Environment**: Select the target zone (e.g., ATM, Fuel Pump) to calibrate sensitivity.
+   - **RF Scan**: Activate the Bluetooth scanner. The system will automatically flag known signatures (Red) and fuzzy variants (Orange).
+   - **Visual**: Use the HUD to check Surface Reflection Index (SRI) for overlays.
 3. **Physical Check**: Complete the interactive checklist (Wiggle Test, Alignment).
-4. **Evidence**: Capture a snapshot. The app calculates a risk score (0-100%).
+4. **Evidence**: Capture a snapshot. The app calculates a weighted risk score (0-100%).
 5. **Review**: Analyze the log in the encrypted vault. Export PDF reports for verified threats.
 
 ## ⚠️ Disclaimer

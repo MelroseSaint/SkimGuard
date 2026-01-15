@@ -66,6 +66,7 @@ const Settings: React.FC = () => {
 
   const toggleFiltering = (enabled: boolean) => {
     if (!enabled) {
+        // Confirmation dialog explaining the risks of raw data
         if (confirm("⚠️ CAUTION: DISABLING SIGNAL FILTERING\n\nRaw signal data is extremely volatile due to RF interference and multipath effects.\n\nDisabling the noise filter will result in erratic graph movements and potential false-positive proximity alerts.\n\nAre you sure you want to proceed with RAW DATA mode?")) {
             setSignalFiltering(false);
         }

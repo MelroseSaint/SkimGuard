@@ -1,3 +1,4 @@
+
 export enum DetectionStatus {
   PENDING = 'PENDING',
   CONFIRMED = 'CONFIRMED',
@@ -9,6 +10,20 @@ export enum SyncStatus {
   SYNCED = 'SYNCED',
   PENDING = 'PENDING',
   FAILED = 'FAILED',
+}
+
+export enum ScanEnvironment {
+  ATM = 'ATM', // High sensitivity, strict isolation
+  FUEL_PUMP = 'FUEL_PUMP', // High sensitivity, industrial interference
+  RETAIL_POS = 'RETAIL_POS', // Medium sensitivity, expects peripherals
+  PUBLIC_SPACE = 'PUBLIC_SPACE', // Low sensitivity, high noise
+}
+
+export enum DetectionMethod {
+  REGEX = 'REGEX', // Exact pattern match
+  FUZZY = 'FUZZY', // Levenshtein approximation
+  HEURISTIC = 'HEURISTIC', // Behavioral/Generic
+  MANUAL = 'MANUAL' // User flagged
 }
 
 export interface InspectionChecklist {
@@ -25,6 +40,8 @@ export interface DeviceLog {
     rssi: number;
     threatType?: string;
     timestamp: number;
+    detectionMethod?: DetectionMethod;
+    matchedKeyword?: string; // For fuzzy hits (Intelligence gathering)
 }
 
 export interface AnalysisResult {
@@ -32,6 +49,7 @@ export interface AnalysisResult {
   riskScore: number; // 0-100
   checklist: InspectionChecklist;
   detectedDevices?: DeviceLog[]; // Detailed logs
+  environment?: ScanEnvironment;
 }
 
 export interface DetectionRecord {
